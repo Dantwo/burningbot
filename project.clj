@@ -3,4 +3,5 @@
   :dependencies [[org.clojure/clojure "1.2.1"]
                  [irclj "0.4.1-SNAPSHOT"]]
   :resources-path "resources"
+  :aot [burningoracle.run]
   :main burningoracle.run)
