@@ -1,44 +1,76 @@
 (ns burningoracle.core
-  (:require '[clojure.string :as str])
-  (:use '[irclj.core]))
+  (:require [clojure.string :as str]
+            [burningoracle.dice :as dice]
+            [clojure.java.io :as io])
+  (:use [irclj.core]))
 
-(defn die [] (int (Math/ceil (* 6 (Math/random)))))
+(declare oracle)
 
-(defn count-success [break n] (when (>= n break) 1))
-
-(defn roll [exp]
-  (let [shade (case (.substring exp 0 1)
-                    "b" (partial count-success 4)
-                    "g" (partial count-success 3)
-                    "w" (partial count-success 2)
-                    (constantly true))
-        n (Integer/parseInt (.substring exp 1))
-        dice (repeatedly n die)
-        successes (apply + (keep shade dice))]
-    (prn dice successes)
-    (str exp " [" (str/join "," dice) "] " successes " successes")))
-
+(def phrasebook-url (io/resource "phrasebook"))
 
 (def canned-phrases
-  {"ugt?" "UGT is http://www.total-knowledge.com/~ilya/mips/ugt.html"
-  })
+  (atom
+   (read-string (slurp phrasebook-url))))
 
-(def priviledged-users ["brehaut"])
+(defonce phrasebook-agent (agent nil))
+
+(defn save-phrasebook! []
+  (send phrasebook-agent (fn [_] (spit phrasebook-url (prn-str @canned-phrases)))))
+
+(defn handle-canned
+  [nick [cmd & r] message]
+  (get @canned-phrases (.toLowerCase cmd)))
+
+(def priviledged-users #{"brehaut" "Zelbinian"})
+
+(defn learn-phrase [nick pieces message]
+  (when (contains? priviledged-users nick)
+    (cond (= "forget" (first pieces)) (do
+                                        (swap! canned-phrases
+                                               dissoc (second pieces))
+                                        (save-phrasebook!)
+                                        (str (second pieces) "? nope, never heard of it."))
+          (= "is" (second pieces)) (do
+                                     (when-let [[_ response] (re-matches #"^[^:]*:\s*\S+\s+is\s+(.+)$"
+                                                                         message)]
+                                       (swap! canned-phrases
+                                              assoc
+                                              (first pieces) response)
+                                       (save-phrasebook!)
+                                       "sure thing boss.")))))
+
+
+(defn addressed-command [f]
+  (fn [nick [address? & pieces] message]
+    (let [len (.length address?)
+          last-index (dec (.length address?))]
+      (when (and (> len 0)
+                 (= \: (.charAt address? last-index))
+                 (= (:name (dosync @oracle))
+                    (.substring address? 0 last-index)))
+        (f nick pieces message)))))
+
+(defn first-of [fs]
+  (fn [irc channel nick pieces message]
+    (when-let [response (first (keep #(% nick pieces message) fs))]
+      (send-message irc channel response))))
+
+(def simple-responder (first-of [(addressed-command learn-phrase)
+                                 handle-canned
+                                 dice/handle-roll]))
+
 
 (defn onmes [{:keys [nick channel message irc] :as all}]
   (prn channel)
-  (let [[cmd & r] (.split message " ")
-        cmd (.toLowerCase cmd)]
-    (cond 
-     (contains? canned-phrases cmd) (send-message irc channel (canned-phrases cmd))
-     
-     (re-matches #"^[bwg]\d+$" cmd) (send-message irc channel (roll cmd)))))
+  (let [pieces (map #(.toLowerCase %) (.split message " "))]
+    (#'simple-responder irc channel nick pieces message)))
 
 
-(def oracle (create-irc {:name "burningoracle"
-                               :username "burningoracle"
-                               :server "irc.synirc.net"
-                               :fnmap {:on-message #'onmes}}))
+(defonce oracle (create-irc {:name "burningoracle"
+                             :username "burningoracle"
+                             :server "irc.synirc.net"
+                             :fnmap {:on-message #'onmes}}))
 
-(def bot (connect oracle
-		  :channels ["#BurningWheel"]))
+(defn start-bot []
+  (connect oracle
+           :channels ["#BurningWheel"]))
