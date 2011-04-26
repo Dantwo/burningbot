@@ -87,7 +87,7 @@
       (swap! users-last-explodables dissoc nick)
       (when (not (:exploded? dice))
         (let [to-explode (count (filter #(= % 6) rolled))]
-          (when [(> to-explode 0)]
+          (when (> to-explode 0)
             (let [new-result (roll {:exploding? true
                                     :shade (:shade dice)
                                     :exponent to-explode})
