@@ -70,7 +70,8 @@
                              :username "burningbot"
                              :server "irc.synirc.net"
                              :password "asavant"
-                             :fnmap {:on-message #'onmes}}))
+                             :fnmap {:on-message #'onmes
+                                     :on-connect (fn [_] (identify oracle))}}))
 
 (defn start-bot []
   (connect oracle
