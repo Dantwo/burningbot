@@ -55,6 +55,7 @@
     (when-let [response (first (keep #(% nick pieces message) fs))]
       (send-message irc channel response))))
 
+
 (def simple-responder (first-of [(addressed-command learn-phrase)
                                  handle-canned
                                  dice/handle-roll
@@ -63,7 +64,7 @@
 
 (defn onmes [{:keys [nick channel message irc] :as all}]
   (prn channel)
-  (let [pieces (map #(.toLowerCase %) (.split message " "))]
+  (let [pieces (map #(.toLowerCase %) (.split message " "))]        
     (#'simple-responder irc channel nick pieces message)))
 
 

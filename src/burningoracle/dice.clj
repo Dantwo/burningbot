@@ -15,8 +15,8 @@
 
 (defn roll
   "roll takes a dice and returns a map of :rolled and :result"
-  [{:keys [shade exponent explodes?] :as dice}]
-  (let [rolled ((if explodes? explode identity) (repeatedly (Math/min exponent 20) die))
+  [{:keys [shade exponent exploding?] :as dice}]
+  (let [rolled ((if exploding? explode identity) (repeatedly (Math/min exponent 20) die))
         successes (count (filter (case shade
                                        "b" (partial count-success 4)
                                        "g" (partial count-success 3)
@@ -86,15 +86,15 @@
     (when-let [{:keys [dice rolled successes obstacle]} (get @users-last-explodables nick nil)]
       (swap! users-last-explodables dissoc nick)
       (when (not (:exploded? dice))
+        (let [to-explode (count (filter #(= % 6) rolled))]
+          (when [(> 0 to-explode)]
+            (let [new-result (roll {:exploding? true
+                                    :shade (:shade dice)
+                                    :exponent to-explode})
+                  {new-successes :successes new-rolled :rolled } new-result
+                  
+                  joined {:successes (+ successes new-successes)
+                          :rolled    (concat rolled new-rolled)
+                          :dice      (assoc dice :exploding? true)}]
 
-        (let [new-result (roll {:exploding? true
-                                :shade (:shade dice)
-                                :exponent (count (filter #(= % 6)
-                                                         rolled))})
-              {new-successes :successes new-rolled :rolled } new-result
-              
-              joined {:successes (+ successes new-successes)
-                      :rolled    (concat rolled new-rolled)
-                      :dice      (assoc dice :exploded? true)}]
-
-          (pack-result nick joined obstacle))))))
+              (pack-result nick joined obstacle))))))))
