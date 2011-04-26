@@ -54,13 +54,15 @@
 (defn addressed-command
   "an addressed-command only fires if the first piece is '_botnick_:'"
   [f]
-  (fn [{:keys [pieces irc message] :as all}]
-    (when-let [addr-nick (nick-address (first pieces))]
-      (when (= (:name (dosync @irc)) addr-nick)
-        (f (assoc all :pieces (rest pieces)
-                  :message (-> message
-                               (.substring (.length (first pieces)))
-                               (.trim))))))))
+  (fn [{:keys [channel pieces irc message] :as all}]
+    (if (not= (.charAt channel 0) \#)
+      (f all)
+      (when-let [addr-nick (nick-address (first pieces))]
+        (when (= (:name (dosync @irc)) addr-nick)
+          (f (assoc all :pieces (rest pieces)
+                    :message (-> message
+                                 (.substring (.length (first pieces)))
+                                 (.trim)))))))))
 
 (defn first-of [fs]
   (let [fs (apply list fs)] ; we dont want to process the message with
@@ -72,6 +74,7 @@
 
 
 (defn sandwich
+  "makes smart arse comments about sandwiches"
   [{:keys [message]}]
   (cond (re-find #"sudo\s+(sandwich|sammich)" message) "one sandwich coming right up"
         (re-find #"sandwich|sammich" message) "make your own damn sandwich"))
