@@ -57,7 +57,8 @@
 
 (def simple-responder (first-of [(addressed-command learn-phrase)
                                  handle-canned
-                                 dice/handle-roll]))
+                                 dice/handle-roll
+                                 dice/handle-explode]))
 
 
 (defn onmes [{:keys [nick channel message irc] :as all}]
