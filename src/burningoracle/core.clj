@@ -66,8 +66,8 @@
     (#'simple-responder irc channel nick pieces message)))
 
 
-(defonce oracle (create-irc {:name "burningoracle"
-                             :username "burningoracle"
+(defonce oracle (create-irc {:name "burningbot"
+                             :username "burningbot"
                              :server "irc.synirc.net"
                              :fnmap {:on-message #'onmes}}))
 
