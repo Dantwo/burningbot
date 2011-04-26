@@ -69,7 +69,8 @@
   (swap! users-last-explodables
          assoc nick dice))
 
-(defn handle-roll [nick [exp1 vs? exp2] message]
+(defn handle-roll [{:keys [nick message]
+                    [exp1 vs? exp2] :pieces}]
   (when-let [dice (unpack-dice exp1)]
     (let [result   (roll dice)
           vs?      (= "vs" vs?)
@@ -77,12 +78,9 @@
       (save-roll! nick (assoc result :obstacle obstacle))
       (pack-result nick result obstacle))))
 
-(defn- merge-key [ma mb k f]
-  (f (get ma k) (get mb k)))
-
 (defn handle-explode
-  [nick [cmd & _] message]
-  (when (= "boom" cmd) 
+  [{:keys [nick pieces message]}]
+  (when (= "boom" (first pieces)) 
     (when-let [{:keys [dice rolled successes obstacle]} (get @users-last-explodables nick nil)]
       (swap! users-last-explodables dissoc nick)
       (when (not (:exploded? dice))
