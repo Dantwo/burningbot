@@ -14,7 +14,7 @@
            (concat s acc)))))
 
 (defn roll [shade n explodes?]
-  (let [dice ((if explodes? explode identity) (repeatedly n die))
+  (let [dice ((if explodes? explode identity) (repeatedly (Math/min n 20) die))
         successes (apply + (keep (case shade
                                        "b" (partial count-success 4)
                                        "g" (partial count-success 3)
