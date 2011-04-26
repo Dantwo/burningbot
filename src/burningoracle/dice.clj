@@ -24,11 +24,20 @@
 
 (def die-re #"^([bgw])(\d+)(\*?)$")
 
+(def users-last-explodables (atom {}))
+
 (defn handle-roll [nick [cmd & _] message]
   (when-let [[_ shade n exploding :as all] (re-matches die-re cmd)]
     (let [[dice successes] (roll shade (Integer/parseInt n) (= "*" exploding))]
+      (swap! users-last-explodables
+             assoc
+             nick (str shade (count (filter #(= % 6) dice)) "*"))
       (str nick " rolled " cmd "→"
          " [" (str/join "," dice) "] "
          successes " successes"))))
 
-
+(defn handle-explode
+  [nick [cmd & _] message]
+  (when (= "boom" cmd) 
+    (when-let [roll (get @users-last-explodables nick nil)]
+      (handle-roll nick [roll] nil))))
