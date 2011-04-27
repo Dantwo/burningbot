@@ -1,6 +1,7 @@
 (ns burningoracle.core
   (:require [clojure.string :as str]
             [burningoracle.dice :as dice]
+            [burningoracle.scraper :as scraper]
             [clojure.java.io :as io])
   (:use [irclj.core]))
 
@@ -83,7 +84,8 @@
                                  handle-canned
                                  dice/handle-roll
                                  dice/handle-explode
-                                 sandwich]))
+                                 sandwich
+                                 scraper/handle-scrape]))
 
 
 (defn onmes [{:keys [message] :as all}]
