@@ -2,44 +2,10 @@
   (:require [clojure.string :as str]
             [burningoracle.dice :as dice]
             [burningoracle.scraper :as scraper]
-            [clojure.java.io :as io])
+            [burningoracle.phrasebook :as phrasebook])
   (:use [irclj.core]))
 
 (declare oracle)
-
-(def phrasebook-url (io/resource "phrasebook"))
-
-(def canned-phrases
-  (atom
-   (read-string (slurp phrasebook-url))))
-
-(defonce phrasebook-agent (agent nil))
-
-(defn save-phrasebook! []
-  (send phrasebook-agent (fn [_] (spit phrasebook-url (prn-str @canned-phrases)))))
-
-(defn handle-canned
-  [{:keys [pieces]}]
-  (get @canned-phrases (.toLowerCase (first pieces))))
-
-(def priviledged-users #{"brehaut" "Zelbinian"})
-
-(defn learn-phrase [{:keys [nick pieces message]}]
-  (prn nick pieces message)
-  (when (contains? priviledged-users nick)
-    (cond (= "forget" (first pieces)) (do
-                                        (swap! canned-phrases
-                                               dissoc (second pieces))
-                                        (save-phrasebook!)
-                                        (str (second pieces) "? nope, never heard of it."))
-          (= "is" (second pieces)) (do
-                                     (when-let [[_ response] (re-matches #"^\S+\s+is\s+(.+)$"
-                                                                         message)]
-                                       (swap! canned-phrases
-                                              assoc
-                                              (first pieces) response)
-                                       (save-phrasebook!)
-                                       "sure thing boss.")))))
 
 (defn nick-address [s]
   "returns a string for a nick or nil"
@@ -50,18 +16,27 @@
                (= \: (.charAt s last-index)))
       (.substring s 0 last-index))))
 
+(defn strip-nick-address
+  [first-piece nick message]
+  (if (= nick (nick-address first-piece))
+    (-> message
+        (.substring (.length first-piece))
+        (.trim))
+    message))
+
 (defn addressed-command
   "an addressed-command only fires if the first piece is '_botnick_:'"
   [f]
   (fn [{:keys [channel pieces irc message] :as all}]
-    (if (not= (.charAt channel 0) \#)
-      (f all)
-      (when-let [addr-nick (nick-address (first pieces))]
-        (when (= (:name (dosync @irc)) addr-nick)
-          (f (assoc all :pieces (rest pieces)
-                    :message (-> message
-                                 (.substring (.length (first pieces)))
-                                 (.trim)))))))))
+    (let [botname (:name (dosync @irc))]
+      (if (not= (.charAt channel 0) \#)
+        (f all)
+        (when-let [addr-nick (nick-address (first pieces))]
+          (when (= botname addr-nick)
+            (f (assoc all                 :pieces (rest pieces)
+                 :message (strip-nick-addres (first pieces)
+                                                  botname
+                                                  message)))))))))
 
 (defn first-of [fs]
   (let [fs (apply list fs)] ; we dont want to process the message with
@@ -71,6 +46,15 @@
       (when-let [response (first (keep #(% all) fs))]
         (when (string? response) (send-message irc channel response))))))
 
+(defn ignore-address
+  [f]
+  (fn [{:keys [message pieces] :as all}]
+    (let [botname (:name (dosync @irc))
+          new-message (strip-nick-address (first pieces) botname message)]
+      (if (= message new-message)
+        (f all)
+        (f (assoc all :pieces (rest pieces)
+                  :message new-message))))))
 
 (defn sandwich
   "makes smart arse comments about sandwiches"
@@ -78,8 +62,8 @@
   (cond (re-find #"sudo\s+(sandwich|sammich)" message) "one sandwich coming right up"
         (re-find #"sandwich|sammich" message) "make your own damn sandwich"))
 
-(def simple-responder (first-of [(addressed-command learn-phrase)
-                                 handle-canned
+(def simple-responder (first-of [(addressed-command phrasebook/handle-learn-phrase)
+                                 (ignore-address phrasebook/handle-canned)
                                  dice/handle-roll
                                  dice/handle-explode
                                  sandwich
