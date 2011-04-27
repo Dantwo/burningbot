@@ -34,7 +34,7 @@
         (when-let [addr-nick (nick-address (first pieces))]
           (when (= botname addr-nick)
             (f (assoc all                 :pieces (rest pieces)
-                 :message (strip-nick-addres (first pieces)
+                 :message (strip-nick-address (first pieces)
                                                   botname
                                                   message)))))))))
 
@@ -48,7 +48,7 @@
 
 (defn ignore-address
   [f]
-  (fn [{:keys [message pieces] :as all}]
+  (fn [{:keys [message pieces irc] :as all}]
     (let [botname (:name (dosync @irc))
           new-message (strip-nick-address (first pieces) botname message)]
       (if (= message new-message)
