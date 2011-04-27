@@ -83,7 +83,8 @@
                                  dice/handle-roll
                                  dice/handle-explode
                                  sandwich
-                                 scraper/handle-scrape]))
+                                 scraper/handle-scrape
+                                 (addressed-command scraper/handle-tags)]))
 
 
 (defn onmes [{:keys [message] :as all}]

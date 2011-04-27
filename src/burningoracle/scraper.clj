@@ -5,6 +5,8 @@
 
 (def ^{:dynamic true} *max-redirects* 3)
 
+(def tagstore (ref {}))
+
 (defn follow-url*
   "follows an http url that redirects. Returns the final url if it resolves
    to a legit page (no redirect loops etc)."
@@ -35,17 +37,31 @@
                               (future-cancel f))))]
     (try @f (catch Exception e nil))))
 
+(defn normalize-href
+  "pages such as we get from vbulletin might provide is us with relative urls
+   for hrefs. we need to normalise them relative to the page we scraped."
+  [page-url href]
+  (str (java.net.URL. page-url href)))
+
 (defn scrape-bw-forum
-  [doc]
+  [doc url]
   {:title (apply str (map html/text (html/select doc [:.threadtitle])))
-   :tags (map html/text (html/select doc [:#thread_tags_list :.commalist :a]))})
+   :tags (into {} (map (juxt html/text
+                             (comp (partial normalize-href url) :href :attrs))
+                       (html/select doc [:#thread_tags_list :.commalist :a])))})
 
 (defn bw-forum-format
   [info]
-  (let [title (:title info)]
+  (let [title (:title info)
+        tags  (:tags info)]
+
+    (when (seq tags)
+      (dosync (ref-set tagstore (into {} (map (fn [[k v]] [(str k "?") v])
+                                       tags)))))
+    
     (when (seq title)
-      (str "'" title "'" (when-let [tags (-> info :tags seq)]
-                           (str " tagged as " (str/join ", " tags)))))))
+      (str "'" title "'" (when-let [tags (seq tags)]
+                           (str " tagged as " (str/join ", " (keys tags))))))))
 
 (def special-domains {"www.burningwheel.org" ::burning-wheel
                       "burningwheel.org"     ::burning-wheel
@@ -57,7 +73,7 @@
 (defmethod scrape-page ::burning-wheel
   [url irc channel]
   (let [doc (html/html-resource url)
-        response (-> doc scrape-bw-forum bw-forum-format)]
+        response (-> doc (scrape-bw-forum url) bw-forum-format)]
     (when response
       (irclj/send-message irc channel response))))
 
@@ -82,6 +98,15 @@
   [{:keys [message irc channel]}]
   (when-let [[url] (re-find weburl-re message)]
     (let [url    (java.net.URL. url)]
-      (prn ">>" url)
       (when (#{"http" "https"} (.getProtocol url))
         (queue-scrape url irc channel)))))
+
+
+(defn handle-tags
+  "burningbot will record tags from the last link that provided them.
+
+  by requesting the tag as a message burningbot will produce the url."
+  [{:keys [message pieces irc channel]}]
+  (when (= \? (last (first pieces)))
+    (when-let [url (dosync (@tagstore (first pieces)))]
+      (str "That tag is " url))))
