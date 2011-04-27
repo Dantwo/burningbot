@@ -28,7 +28,6 @@
   (prn nick pieces message)
   (when (contains? priviledged-users nick)
     (cond (= "forget" (first pieces)) (do
-                                        (prn "forgetting")
                                         (swap! canned-phrases
                                                dissoc (second pieces))
                                         (save-phrasebook!)
@@ -36,7 +35,6 @@
           (= "is" (second pieces)) (do
                                      (when-let [[_ response] (re-matches #"^\S+\s+is\s+(.+)$"
                                                                          message)]
-                                       (prn "learning"  response)
                                        (swap! canned-phrases
                                               assoc
                                               (first pieces) response)
