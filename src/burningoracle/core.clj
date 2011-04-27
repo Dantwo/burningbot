@@ -94,6 +94,7 @@
 
 (defonce oracle (create-irc {:name "burningbot"
                              :username "burningbot"
+                             :realname "#burningwheel bot"
                              :server "irc.synirc.net"
                              :fnmap {:on-message #'onmes
                                      :on-connect (fn [_] (identify oracle))}}))

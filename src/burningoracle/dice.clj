@@ -10,8 +10,8 @@
   ([s] (explode s ()))
   ([s acc]
      (let [newdice (keep #(when (= 6 %) (die)) s)]
-       (if (seq newdice) (recur newdice (concat s acc))
-           (concat s acc)))))
+       (if (seq newdice) (recur newdice (concat acc s))
+           (concat acc s)))))
 
 (defn roll
   "roll takes a dice and returns a map of :rolled and :result"
