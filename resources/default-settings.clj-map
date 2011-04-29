@@ -2,4 +2,8 @@
          :username "burningbot"
          :realname "#burningwheel bot"
          :server "irc.synirc.net"}
- :starting-channels ["#BurningWheel" "#burningbot"]}
+
+ :starting-channels ["#BurningWheel" "#burningbot"]
+
+ :logging {:dir "logs/"
+           :channels #{"#BurningWheel"}}}
