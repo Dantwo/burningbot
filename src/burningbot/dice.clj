@@ -1,4 +1,4 @@
-(ns burningoracle.dice
+(ns burningbot.dice
   (:require [clojure.string :as str]))
 
 

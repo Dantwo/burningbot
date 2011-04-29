@@ -1,4 +1,4 @@
-(ns burningoracle.scraper
+(ns burningbot.scraper
   (:require [net.cgrand.enlive-html :as html]
             [clojure.string :as str]
             [irclj.core :as irclj]))

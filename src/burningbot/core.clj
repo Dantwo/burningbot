@@ -1,11 +1,13 @@
-(ns burningoracle.core
+(ns burningbot.core
   (:require [clojure.string :as str]
-            [burningoracle.dice :as dice]
-            [burningoracle.scraper :as scraper]
-            [burningoracle.phrasebook :as phrasebook])
-  (:use [irclj.core]))
+            [burningbot.dice :as dice]
+            [burningbot.scraper :as scraper]
+            [burningbot.settings :as settings]
+            [burningbot.phrasebook :as phrasebook])
+  (:use [irclj.core]
+        [burningbot.settings :only [settings]]))
 
-(declare oracle)
+(declare bot)
 
 (defn nick-address [s]
   "returns a string for a nick or nil"
@@ -75,14 +77,11 @@
   (let [pieces (map #(.toLowerCase %) (.split message " "))]        
     (#'simple-responder (assoc all :pieces pieces))))
 
+(defonce bot (create-irc (merge (settings/read-setting :irclj)
+                                {:fnmap {:on-message #'onmes
+                                         :on-connect (fn [_] (identify bot))}})))
 
-(defonce oracle (create-irc {:name "burningbot"
-                             :username "burningbot"
-                             :realname "#burningwheel bot"
-                             :server "irc.synirc.net"
-                             :fnmap {:on-message #'onmes
-                                     :on-connect (fn [_] (identify oracle))}}))
+(defn start-bot
+  []
+  (connect bot :channels (settings/read-setting :starting-channels)))
 
-(defn start-bot []
-  (connect oracle
-           :channels ["#BurningWheel" "#burningbot"]))

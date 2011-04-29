@@ -1,4 +1,4 @@
-(ns burningoracle.phrasebook
+(ns burningbot.phrasebook
   (:require [clojure.java.io :as io]))
 
 
