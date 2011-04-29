@@ -39,5 +39,5 @@
                                      "sure thing boss."))))
 
 (defn handle-canned
-  [{:keys [pieces]}]
-  (get @canned-phrases (.toLowerCase (first pieces))))
+  [{:keys [message]}]
+  (get @canned-phrases (.toLowerCase (.trim message))))

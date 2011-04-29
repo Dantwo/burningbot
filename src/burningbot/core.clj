@@ -1,6 +1,7 @@
 (ns burningbot.core
   (:require [clojure.string :as str]
             [burningbot.dice :as dice]
+            [burningbot.logging :as logging]
             [burningbot.scraper :as scraper]
             [burningbot.settings :as settings]
             [burningbot.phrasebook :as phrasebook])
@@ -75,7 +76,8 @@
 
 (defn onmes [{:keys [message] :as all}]
   (let [pieces (map #(.toLowerCase %) (.split message " "))]        
-    (#'simple-responder (assoc all :pieces pieces))))
+    (#'simple-responder (assoc all :pieces pieces))
+    (logging/handle-logging all)))
 
 (defonce bot (create-irc (merge (settings/read-setting :irclj)
                                 {:fnmap {:on-message #'onmes

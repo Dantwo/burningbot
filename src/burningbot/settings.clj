@@ -50,4 +50,6 @@
 (defn read-setting
   "returns a setting for a given key"
   [key]
-  (get (or @settings (load-settings!)) key))
+  ((if (keyword? key)
+     get
+     get-in) (or @settings (load-settings!)) key))
