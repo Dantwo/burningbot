@@ -1,0 +1,34 @@
+# burningbot
+
+a bot for #burningwheel. 
+
+ + dice
+
+## Usage
+
+See the BW wiki
+
+# Future
+
+Possible future features:
+
+ * Dice
+   *  'traitors' command: rerolls failed dice for persona
+   
+ * Logging
+   *  Marking
+      - some syntax to tell burningbot to record a mark with one or more tags. 
+        potentially allows a mark to bracket a period of minutes.
+      - all marks are tagged with the nick as well.
+
+ * Lifepath suggester
+   *  A tool for new players to get suggestions with the mechanical aspects of character creation
+
+ * Join rooms
+   *  Only joins a room when requested by an op of that room.
+   *  Max rooms
+ 
+## License
+
+Copyright (C) 2011 Andrew Brehaut
+

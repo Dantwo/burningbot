@@ -1,0 +1,5 @@
+{:irclj {:name "burningbot"
+         :username "burningbot"
+         :realname "#burningwheel bot"
+         :server "irc.synirc.net"}
+ :starting-channels ["#BurningWheel" "#burningbot"]}

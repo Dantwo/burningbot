@@ -1,5 +1,5 @@
-(ns burningoracle.run
-  (:use [burningoracle.core])
+(ns burningbot.run
+  (:use [burningbot.core])
   (:gen-class))
 
 (defn -main [& args]
