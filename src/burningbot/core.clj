@@ -1,12 +1,14 @@
 (ns burningbot.core
   (:require [clojure.string :as str]
             [burningbot.dice :as dice]
+            [burningbot.invitation :as invitation]
             [burningbot.logging :as logging]
             [burningbot.scraper :as scraper]
             [burningbot.settings :as settings]
             [burningbot.phrasebook :as phrasebook])
   (:use [irclj.core]
-        [burningbot.settings :only [settings]]))
+        [burningbot.settings :only [settings]]
+        [clojure.pprint :only [pprint]]))
 
 (declare bot)
 
@@ -46,7 +48,7 @@
                             ; more functions than necessary, and if a
                             ; vector is passed in we get a chunked seq
     (fn [{:keys [irc channel] :as all}]
-      (when-let [response (first (keep #(% all) fs))]
+      (when-let [response (first (keep #(% all) fs))]        
         (when (string? response) (send-message irc channel response))))))
 
 (defn ignore-address
@@ -65,22 +67,30 @@
   (cond (re-find #"sudo\s+(sandwich|sammich)" message) "one sandwich coming right up"
         (re-find #"sandwich|sammich" message) "make your own damn sandwich"))
 
-(def simple-responder (first-of [(addressed-command phrasebook/handle-learn-phrase)
-                                 (ignore-address phrasebook/handle-canned)
-                                 dice/handle-roll
-                                 dice/handle-explode
-                                 sandwich
-                                 scraper/handle-scrape
-                                 (addressed-command scraper/handle-tags)]))
+(def simple-responder
+  (invitation/guard-for-authorization
+   (first-of [(addressed-command phrasebook/handle-learn-phrase)
+              (ignore-address phrasebook/handle-canned)
+              dice/handle-roll
+              dice/handle-explode
+              (addressed-command sandwich)
+              scraper/handle-scrape
+              (addressed-command scraper/handle-tags)
+              (addressed-command invitation/handle-invite)])))
 
 
-(defn onmes [{:keys [message] :as all}]
+(defn on-message [{:keys [message] :as all}]
   (let [pieces (map #(.toLowerCase %) (.split message " "))]        
     (#'simple-responder (assoc all :pieces pieces))
     (logging/handle-logging all)))
 
+(defn on-join
+  [all]
+  (invitation/handle-join all))
+
 (defonce bot (create-irc (merge (settings/read-setting :irclj)
-                                {:fnmap {:on-message #'onmes
+                                {:fnmap {:on-message #'on-message
+                                         :on-join #'on-join
                                          :on-connect (fn [_] (identify bot))}})))
 
 (defn start-bot
