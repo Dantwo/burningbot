@@ -69,14 +69,14 @@
 
 (def simple-responder
   (invitation/guard-for-authorization
-   (first-of [(addressed-command phrasebook/handle-learn-phrase)
-              (ignore-address phrasebook/handle-canned)
-              dice/handle-roll
-              dice/handle-explode
-              (addressed-command sandwich)
-              scraper/handle-scrape
-              (addressed-command scraper/handle-tags)
-              (addressed-command invitation/handle-invite)])))
+   (first-of [(addressed-command (first-of [phrasebook/handle-learn-phrase
+                                            scraper/handle-tags
+                                            ;;invitation/handle-invite
+                                            sandwich]))
+              (ignore-address (first-of [phrasebook/handle-canned
+                                         dice/handle-roll
+                                         dice/handle-explode]))
+              scraper/handle-scrape])))
 
 
 (defn on-message [{:keys [message] :as all}]
@@ -90,7 +90,7 @@
 
 (defonce bot (create-irc (merge (settings/read-setting :irclj)
                                 {:fnmap {:on-message #'on-message
-                                         :on-join #'on-join
+                                         ;;:on-join #'on-join
                                          :on-connect (fn [_] (identify bot))}})))
 
 (defn start-bot
