@@ -43,7 +43,7 @@
   [page-url href]
   (str (java.net.URL. page-url href)))
 
-(defn scrape-bw-forum
+(defn scrape-vbull3-forum
   [doc url]
   {:title (apply str (map html/text (html/select doc [:.threadtitle])))
    :tags (into {} (map (juxt html/text
@@ -60,8 +60,8 @@
                                        tags)))))
     
     (when (seq title)
-      (str "'" title "'" (when-let [tags (seq tags)]
-                           (str " tagged as " (str/join ", " (keys tags))))))))
+      (str "⇒ Burning Wheel Forums: '" title "'" (when-let [tags (seq tags)]
+                                                 (str " tagged as " (str/join ", " (keys tags))))))))
 
 (def special-domains {"www.burningwheel.org" ::burning-wheel
                       "burningwheel.org"     ::burning-wheel
@@ -73,23 +73,26 @@
 (defmethod scrape-page ::burning-wheel
   [url irc channel]
   (let [doc (html/html-resource url)
-        response (-> doc (scrape-bw-forum url) bw-forum-format)]
+        response (-> doc (scrape-vbull3-forum url) bw-forum-format)]
     (when response
-      (irclj/send-message irc channel response))))
+      (irclj/send-message irc channel response)
+      true)))
 
 (def scraper (agent nil)) ; acts as a queue of urls to scrape
 
 (defn queue-scrape
+  "broadcasts a url if it differs from the posted url. Additionally it is aware of specific sites
+   such as burningwheel forums. If we have a transformation for this particular page, that will
+   always be displayed instead of the url even if there is an expansion."
   [url irc channel]
-  (future (let [resolved-url (follow-url url)]
-                                        ; broadcast final url if it differs from the posted url
-
-            (when (and resolved-url
-                       (not (.sameFile url resolved-url)))
-              (irclj/send-message irc channel (str "⇒ " resolved-url)))
-            
+  (future (when-let [resolved-url (follow-url url)]
+            ;; broadcast final url if it differs from the posted url            
+            (if-not (.sameFile url resolved-url)
+              (or (scrape-page resolved-url irc channel)
+                  (irclj/send-message irc channel (str "⇒ " resolved-url)))
+              
                                         ; display domain specific behavior
-            (when resolved-url (scrape-page resolved-url irc channel)))))
+              (scrape-page resolved-url irc channel)))))
 
 
 (def weburl-re #"(http://[^/\s]*(/\S*)?)")
