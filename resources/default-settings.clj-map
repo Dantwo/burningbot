@@ -6,4 +6,16 @@
  :starting-channels ["#BurningWheel" "#burningbot"]
 
  :logging {:dir "logs/"
-           :channels #{"#BurningWheel"}}}
+           :channels #{"#BurningWheel"}}
+
+ :scraping {:sites {#{"www.burningwheel.org" 
+                      "burningwheel.org"
+                      "www.burningwheel.com" 
+                      "burningwheel.com"} {"/forum/" {:system :vbulletin3
+                                                      :title  "Burning Wheel Forum"}
+                                           "/wiki/"  {:system :wikimedia
+                                                      :title  "Burning Wheel Wiki"}
+                                           "/"       {:system :wordpress
+                                                      :title  "Burning Wheel"}}
+                      "forum.rpg.net"     {"/"       {:system :vbulletin3
+                                                      :title  "RPGnet"}}}}}
