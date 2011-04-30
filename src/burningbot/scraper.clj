@@ -63,6 +63,7 @@
       (str "⇒ Burning Wheel Forums: '" title "'" (when-let [tags (seq tags)]
                                                  (str " tagged as " (str/join ", " (keys tags))))))))
 
+
 (def special-domains {"www.burningwheel.org" ::burning-wheel
                       "burningwheel.org"     ::burning-wheel
                       "www.burningwheel.com" ::burning-wheel
@@ -72,11 +73,18 @@
 
 (defmethod scrape-page ::burning-wheel
   [url irc channel]
-  (let [doc (html/html-resource url)
-        response (-> doc (scrape-vbull3-forum url) bw-forum-format)]
-    (when response
-      (irclj/send-message irc channel response)
-      true)))
+  (let [doc (html/html-resource url)]
+    (condp #(.startsWith %2 %1) (.getPath url)
+      "/forum" (when-let [response (-> doc (scrape-vbull3-forum url) bw-forum-format)]
+                 (irclj/send-message irc channel response)
+                 true)
+      "/" (when (-> url .getQuery (.startsWith "p"))
+            (when-let [title (first (map html/text (html/select doc [:title])))]
+              (irclj/send-message irc channel (str "⇒ Burning Wheel: " (first (.split title  "«"))))
+              true))
+      nil)))
+
+(defmethod scrape-page :default [_ _ _] nil)
 
 (def scraper (agent nil)) ; acts as a queue of urls to scrape
 
