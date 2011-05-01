@@ -56,10 +56,12 @@
 
 (defn read-setting
   "returns a setting for a given key"
-  [key]
-  ((if (keyword? key)
-     get
-     get-in) (:settings (settings-map)) key))
+  ([key] (read-setting key nil))
+  ([key default]
+     (or ((if (keyword? key)
+            get
+            get-in) (:settings (settings-map)) key)
+         default)))
 
 (defn last-updated
   "returns the time the settings were last updated"

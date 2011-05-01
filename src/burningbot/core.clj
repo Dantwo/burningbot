@@ -61,6 +61,17 @@
         (f (assoc all :pieces (rest pieces)
                   :message new-message))))))
 
+(defn guard
+  [preds f]
+  (fn [info]
+    (when-not (some false? (map #(% info) preds))
+      (f info))))
+
+(defn not-a-bot?
+  [{nick :nick}]
+  (not (or (.endsWith nick "bot")
+           ((settings/read-setting :ignore-set #{}) nick))))
+
 (defn sandwich
   "makes smart arse comments about sandwiches"
   [{:keys [message]}]
@@ -68,15 +79,16 @@
         (re-find #"sandwich|sammich" message) "make your own damn sandwich"))
 
 (def simple-responder
-  (invitation/guard-for-authorization
-   (first-of [(addressed-command (first-of [phrasebook/handle-learn-phrase
-                                            scraper/handle-tags
-                                            ;;invitation/handle-invite
-                                            sandwich]))
-              (ignore-address (first-of [phrasebook/handle-canned
-                                         dice/handle-roll
-                                         dice/handle-explode]))
-              scraper/handle-scrape])))
+  (guard [not-a-bot?]
+         (invitation/guard-for-authorization
+          (first-of [(addressed-command (first-of [phrasebook/handle-learn-phrase
+                                                   scraper/handle-tags
+                                                   ;;invitation/handle-invite
+                                                   sandwich]))
+                     (ignore-address (first-of [phrasebook/handle-canned
+                                                dice/handle-roll
+                                                dice/handle-explode]))
+                     scraper/handle-scrape]))))
 
 
 (defn on-message [{:keys [message] :as all}]
