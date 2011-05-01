@@ -70,15 +70,12 @@
 
 ;; irc hooks
 
-(defn guard-for-authorization
+(defn authorized-for-channel?
   "checks the channel against the authorizations data."
-  [f]
-  (fn [{:keys [channel] :as all}]
-
-    (when (or (contains? (set (settings/read-setting :starting-channels)) channel)
-           (= :speaking
-              (get-in @authorizations [channel :state])))
-      (f all))))
+   [{:keys [channel]}]
+   (or (contains? (set (settings/read-setting :starting-channels)) channel)
+       (= :speaking
+          (get-in @authorizations [channel :state]))))
 
 (defn handle-invite
   "parses incoming messages and checks for join and part requests."

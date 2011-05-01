@@ -79,16 +79,16 @@
         (re-find #"sandwich|sammich" message) "make your own damn sandwich"))
 
 (def simple-responder
-  (guard [not-a-bot?]
-         (invitation/guard-for-authorization
-          (first-of [(addressed-command (first-of [phrasebook/handle-learn-phrase
-                                                   scraper/handle-tags
-                                                   ;;invitation/handle-invite
-                                                   sandwich]))
-                     (ignore-address (first-of [phrasebook/handle-canned
-                                                dice/handle-roll
-                                                dice/handle-explode]))
-                     scraper/handle-scrape]))))
+  (guard [not-a-bot?
+          invitation/authorized-for-channel?]         
+         (first-of [(addressed-command (first-of [phrasebook/handle-learn-phrase
+                                                  scraper/handle-tags
+                                                  ;;invitation/handle-invite
+                                                  sandwich]))
+                    (ignore-address (first-of [phrasebook/handle-canned
+                                               dice/handle-roll
+                                               dice/handle-explode]))
+                    scraper/handle-scrape])))
 
 
 (defn on-message [{:keys [message] :as all}]
