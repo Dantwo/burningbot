@@ -22,7 +22,9 @@
                     (instance? File item)) (try
                                              (with-open [r (-> item io/reader PushbackReader.)]
                                                (read r))
-                                             (catch Exception _ nil))
+                                             (catch Exception e
+                                               (prn "Failed to load settings file:" e)
+                                               nil))
                     (map? item) item
                     (ifn? item) (item))]
     (when (map? m) m)))
