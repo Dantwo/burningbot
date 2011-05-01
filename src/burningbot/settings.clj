@@ -1,7 +1,9 @@
 (ns burningbot.settings
   "This settings module provides an api to load settings. These settings are a
    clojure map created by loading and merging maps in order."
-  (:require [clojure.java.io :as io])
+ 
+  (:require [clojure.java.io :as io]
+            [clj-time.core :as time])
   (:use [clojure.contrib.map-utils :only [deep-merge-with]])
   (:import [java.net URL]
            [java.io File PushbackReader]))
@@ -20,7 +22,9 @@
                     (instance? File item)) (try
                                              (with-open [r (-> item io/reader PushbackReader.)]
                                                (read r))
-                                             (catch Exception _ nil))
+                                             (catch Exception e
+                                               (prn "Failed to load settings file:" e)
+                                               nil))
                     (map? item) item
                     (ifn? item) (item))]
     (when (map? m) m)))
@@ -42,14 +46,27 @@
      (load-settings! *settings-sources*))
   ([settings-sources]
      (reset! settings
-             (apply deep-merge-with (fn [a b] b) {}
-                    (for [item settings-sources
-                          :let [m (load-map item)]
-                          :when m] m)))))
+             {:last-updated (time/now)
+              :settings    (apply deep-merge-with (fn [a b] b) {}
+                                  (for [item settings-sources
+                                        :let [m (load-map item)]
+                                        :when m] m))})))
+
+(defn- settings-map
+  []
+  (or @settings (load-settings!)))
 
 (defn read-setting
   "returns a setting for a given key"
-  [key]
-  ((if (keyword? key)
-     get
-     get-in) (or @settings (load-settings!)) key))
+  ([key] (read-setting key nil))
+  ([key default]
+     (or ((if (keyword? key)
+            get
+            get-in) (:settings (settings-map)) key)
+         default)))
+
+(defn last-updated
+  "returns the time the settings were last updated"
+  []
+  (:last-updated (settings-map) :last-updated))
+

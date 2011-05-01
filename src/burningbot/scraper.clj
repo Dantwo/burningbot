@@ -1,17 +1,64 @@
 (ns burningbot.scraper
+  "the scraper finds urls in messages and follows them. If the url resolves in a domain that it is
+   configured to scrape, it does so and provides additional information."
+  
   (:require [net.cgrand.enlive-html :as html]
             [clojure.string :as str]
-            [irclj.core :as irclj]))
+            [irclj.core :as irclj]
+            [clj-time.core :as time]
+            [burningbot.settings :as settings])
+  (:import [java.net URL]))
 
 (def ^{:dynamic true} *max-redirects* 3)
 
-(def tagstore (ref {}))
+(defonce ^{:doc "tagstore is a map of tag to url populated when pages are scrapped."}
+  tagstore
+  (ref {}))
+
+
+(defonce ^{:private true
+           :doc     "site rules is map of rules on a domain and path fragment basis. it is derived from
+                     the [:scraping :sites] map in the bot settings."}
+  site-rules
+  (atom nil))
+
+;; load settings and create site-rules
+
+(defn- rebuild-rules
+  [settings]
+  (into {} (for [[domains config] settings
+                 domain           (if (string? domains) [domains] domains)]
+             [domain config])))
+
+(defn- latest-rules!
+  "returns the latest rules, updating them if needed."
+  []
+  (let [rules            @site-rules
+        settings-updated (settings/last-updated)]
+    (:rules (if (or (nil? rules)
+                    (time/after? settings-updated (:last-updated rules)))
+              (reset! site-rules {:last-updated settings-updated
+                                  :rules        (rebuild-rules (settings/read-setting [:scraping :sites]))})
+              rules))))
+
+(defn rules-for-url
+  "looks up the settings for the url"
+  [^URL url]
+  (let [rules   (latest-rules!)
+        domain  (.getHost url)
+        path    (.getPath url)
+        by-path (rules domain)]
+    (first (keep (fn [[prefix config]] (when (.startsWith path prefix) config))
+                 by-path))))
+
+;; the following code allows the bot to follow urls and provide
+;; reasonable feedback to channel participants 
 
 (defn follow-url*
   "follows an http url that redirects. Returns the final url if it resolves
    to a legit page (no redirect loops etc)."
-  ([url] (follow-url* url #{}))
-  ([url urls-seen]
+  ([^URL url] (follow-url* url #{}))
+  ([^URL url urls-seen]
      (when (and (> *max-redirects* (count urls-seen))
                 (not (contains? urls-seen url)))
        (let [conn      (.openConnection url)
@@ -27,7 +74,7 @@
                                                                  urls-seen)
                       (contains? #{200} code) url
                       :else nil))
-              (finally (.disconnect conn)))))))
+       (finally (.disconnect conn)))))))
 
 (defn follow-url
   [& a]
@@ -40,18 +87,13 @@
 (defn normalize-href
   "pages such as we get from vbulletin might provide is us with relative urls
    for hrefs. we need to normalise them relative to the page we scraped."
-  [page-url href]
-  (str (java.net.URL. page-url href)))
+  [^URL page-url href]
+  (str (URL. page-url href)))
 
-(defn scrape-vbull3-forum
-  [doc url]
-  {:title (apply str (map html/text (html/select doc [:.threadtitle])))
-   :tags (into {} (map (juxt html/text
-                             (comp (partial normalize-href url) :href :attrs))
-                       (html/select doc [:#thread_tags_list :.commalist :a])))})
 
-(defn bw-forum-format
-  [info]
+(defn format-scrape-result
+  "This takes a map from perform-scraping and returns a string or nil."
+  [info page-title]
   (let [title (:title info)
         tags  (:tags info)]
 
@@ -60,31 +102,46 @@
                                        tags)))))
     
     (when (seq title)
-      (str "⇒ Burning Wheel Forums: '" title "'" (when-let [tags (seq tags)]
-                                                 (str " tagged as " (str/join ", " (keys tags))))))))
+      (str  "⇒  " page-title ": '" title "'"
+            (when-let [tags (seq tags)]
+              (str " tagged as " (str/join ", " (keys tags))))))))
 
+(defmulti perform-scraping (fn [^URL u r d] (:system r)))
 
-(def special-domains {"www.burningwheel.org" ::burning-wheel
-                      "burningwheel.org"     ::burning-wheel
-                      "www.burningwheel.com" ::burning-wheel
-                      "burningwheel.com"     ::burning-wheel})
+(defmethod perform-scraping :vbulletin3
+  [^URL url rules doc]
+  {:title (apply str (map html/text (html/select doc [:.threadtitle])))
+   :tags (into {} (map (juxt html/text
+                             (comp (partial normalize-href url) :href :attrs))
+                       (html/select doc [:#thread_tags_list :.commalist :a])))})
 
-(defmulti scrape-page (fn [url irc channel] (special-domains (.getHost url))))
+(defmethod perform-scraping :wordpress
+  [^URL url rules doc]
+  (when-let [title (first (map html/text (html/select doc [:title])))]
+    {:title (first (.split title (:title-sep rules)))}))
 
-(defmethod scrape-page ::burning-wheel
-  [url irc channel]
-  (let [doc (html/html-resource url)]
-    (condp #(.startsWith %2 %1) (.getPath url)
-      "/forum" (when-let [response (-> doc (scrape-vbull3-forum url) bw-forum-format)]
-                 (irclj/send-message irc channel response)
-                 true)
-      "/" (when (-> url .getQuery (.startsWith "p"))
-            (when-let [title (first (map html/text (html/select doc [:title])))]
-              (irclj/send-message irc channel (str "⇒ Burning Wheel: " (first (.split title  "«"))))
-              true))
-      nil)))
+(defmethod perform-scraping :wikimedia
+  [^URL url rules doc]
+  (prn "scraping wikimedia")
+  {:title (apply str (map html/text (html/select doc [:#firstHeading])))
+   :tags  (keep (fn [{{:keys [title href]} :attrs :as node}]
+                  (when (.startsWith title "Category:")
+                    [(.toLowerCase (html/text node)) href]))
+                (html/select doc [:.catlinks :a]))})
 
-(defmethod scrape-page :default [_ _ _] nil)
+(defmethod perform-scraping :default [_ _ _] nil)
+
+(defn scrape-page
+  [^URL url irc channel]
+  (prn url)
+  (when-let [rules (rules-for-url url)]
+    (prn url rules)
+    (let [doc  (html/html-resource url)
+          info (perform-scraping url rules doc)
+          msg  (format-scrape-result info (:title rules))]
+      (when msg
+        (irclj/send-message irc channel msg)
+        true))))
 
 (def scraper (agent nil)) ; acts as a queue of urls to scrape
 
@@ -92,9 +149,11 @@
   "broadcasts a url if it differs from the posted url. Additionally it is aware of specific sites
    such as burningwheel forums. If we have a transformation for this particular page, that will
    always be displayed instead of the url even if there is an expansion."
-  [url irc channel]
+
+  [^URL url irc channel]
   (future (when-let [resolved-url (follow-url url)]
-            ;; broadcast final url if it differs from the posted url            
+            ;; broadcast final url if it differs from the posted url
+
             (if-not (.sameFile url resolved-url)
               (or (scrape-page resolved-url irc channel)
                   (irclj/send-message irc channel (str "⇒ " resolved-url)))
@@ -108,7 +167,7 @@
 (defn handle-scrape
   [{:keys [message irc channel]}]
   (when-let [[url] (re-find weburl-re message)]
-    (let [url    (java.net.URL. url)]
+    (let [url (URL. url)]
       (when (#{"http" "https"} (.getProtocol url))
         (queue-scrape url irc channel)))))
 
