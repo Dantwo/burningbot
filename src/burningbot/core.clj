@@ -48,6 +48,8 @@
                       (first-of [phrasebook/handle-canned
                                  dice/handle-roll
                                  dice/handle-explode]))
+                     (addressed-command
+                      (constantly "failed my gibberish-wise test"))
                      scraper/handle-scrape]))))
 
 ;; irclj nuts and bolts
