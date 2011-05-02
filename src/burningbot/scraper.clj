@@ -22,6 +22,16 @@
   site-rules
   (atom nil))
 
+(defn connection-for-url
+  "returns a new connection object for the URL with the burningbot specific configuration set."
+  [^URL url]
+  (doto (.openConnection url)
+    (.setRequestProperty "User-Agent" "BurningBot-v0.awesome")))
+
+(defn load-url-for-scrape
+  [url]
+  (html/html-resource (.getInputStream (connection-for-url url))))
+
 ;; load settings and create site-rules
 
 (defn- rebuild-rules
@@ -61,11 +71,12 @@
   ([^URL url urls-seen]
      (when (and (> *max-redirects* (count urls-seen))
                 (not (contains? urls-seen url)))
-       (let [conn      (.openConnection url)
+       (let [conn      (connection-for-url url)
              urls-seen (conj urls-seen url)]
          (try (doto conn
                 (.setInstanceFollowRedirects false)
                 (.setRequestMethod "HEAD")
+                (.setRequestProperty "User-Agent" "BurningBot-v0.awesome")
                 (.connect))
               (let [code (.getResponseCode conn)]
                 (cond (contains? #{301 302 303 307} code) (recur (-> conn
@@ -122,21 +133,18 @@
 
 (defmethod perform-scraping :wikimedia
   [^URL url rules doc]
-  (prn "scraping wikimedia")
   {:title (apply str (map html/text (html/select doc [:#firstHeading])))
-   :tags  (keep (fn [{{:keys [title href]} :attrs :as node}]
-                  (when (.startsWith title "Category:")
-                    [(.toLowerCase (html/text node)) href]))
-                (html/select doc [:.catlinks :a]))})
+   :tags  (into {} (keep (fn [{{:keys [title href]} :attrs :as node}]
+                           (when (.startsWith title "Category:")
+                             [(.toLowerCase (html/text node)) href]))
+                         (html/select doc [:.catlinks :a])))})
 
 (defmethod perform-scraping :default [_ _ _] nil)
 
 (defn scrape-page
   [^URL url irc channel]
-  (prn url)
   (when-let [rules (rules-for-url url)]
-    (prn url rules)
-    (let [doc  (html/html-resource url)
+    (let [doc  (load-url-for-scrape url)
           info (perform-scraping url rules doc)
           msg  (format-scrape-result info (:title rules))]
       (when msg
