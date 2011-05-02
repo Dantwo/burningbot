@@ -1,5 +1,6 @@
 (ns burningbot.core
-  (:require [clojure.string :as str]
+  "This module ties together all the components of burningbot and hooks it into an irclj ircbot"
+  (:require [clojure.string :as str]         
             [burningbot.dice :as dice]
             [burningbot.invitation :as invitation]
             [burningbot.logging :as logging]
@@ -8,69 +9,19 @@
             [burningbot.phrasebook :as phrasebook])
   (:use [irclj.core]
         [burningbot.settings :only [settings]]
+        [burningbot.plumbing :only [guard
+                                    send-response-as-message
+                                    first-of
+                                    addressed-command
+                                    ignore-address]]
         [clojure.pprint :only [pprint]]))
 
-(declare bot)
-
-(defn nick-address [s]
-  "returns a string for a nick or nil"
-  (let [s   (.trim s)
-        len (.length s)
-        last-index (dec len)]
-    (when (and (> len 0)
-               (= \: (.charAt s last-index)))
-      (.substring s 0 last-index))))
-
-(defn strip-nick-address
-  [first-piece nick message]
-  (if (= nick (nick-address first-piece))
-    (-> message
-        (.substring (.length first-piece))
-        (.trim))
-    message))
-
-(defn addressed-command
-  "an addressed-command only fires if the first piece is '_botnick_:'"
-  [f]
-  (fn [{:keys [channel pieces irc message] :as all}]
-    (let [botname (:name (dosync @irc))]
-      (if (not= (.charAt channel 0) \#)
-        (f all)
-        (when-let [addr-nick (nick-address (first pieces))]
-          (when (= botname addr-nick)
-            (f (assoc all                 :pieces (rest pieces)
-                 :message (strip-nick-address (first pieces)
-                                                  botname
-                                                  message)))))))))
-
-(defn first-of [fs]
-  (let [fs (apply list fs)] ; we dont want to process the message with
-                            ; more functions than necessary, and if a
-                            ; vector is passed in we get a chunked seq
-    (fn [{:keys [irc channel] :as all}]
-      (when-let [response (first (keep #(% all) fs))]        
-        (when (string? response) (send-message irc channel response))))))
-
-(defn ignore-address
-  [f]
-  (fn [{:keys [message pieces irc] :as all}]
-    (let [botname (:name (dosync @irc))
-          new-message (strip-nick-address (first pieces) botname message)]
-      (if (= message new-message)
-        (f all)
-        (f (assoc all :pieces (rest pieces)
-                  :message new-message))))))
-
-(defn guard
-  [preds f]
-  (fn [info]
-    (when-not (some false? (map #(% info) preds))
-      (f info))))
-
-(defn not-a-bot?
+(defn sender-is-bot?
+  "tests the incoming messages nick to see if it is in the ignore-set in settings or ends with 'bot';
+   either causes the predicate to return true."
   [{nick :nick}]
-  (not (or (.endsWith nick "bot")
-           ((settings/read-setting :ignore-set #{}) nick))))
+  (or (.endsWith nick "bot")
+      ((settings/read-setting :ignore-set #{}) nick)))
 
 (defn sandwich
   "makes smart arse comments about sandwiches"
@@ -78,25 +29,37 @@
   (cond (re-find #"sudo\s+(sandwich|sammich)" message) "one sandwich coming right up"
         (re-find #"sandwich|sammich" message) "make your own damn sandwich"))
 
-(def simple-responder
-  (guard [not-a-bot?
-          invitation/authorized-for-channel?]         
-         (first-of [(addressed-command (first-of [phrasebook/handle-learn-phrase
-                                                  scraper/handle-tags
-                                                  ;;invitation/handle-invite
-                                                  sandwich]))
-                    (ignore-address (first-of [phrasebook/handle-canned
-                                               dice/handle-roll
-                                               dice/handle-explode]))
-                    scraper/handle-scrape])))
 
+(def ^{:doc "message-responder is the main pipeline of handlers for on-message calls.
+             various handlers are combined with burningbot.plumbing; see that lib for details.
+
+             currently this processing is sequential but in future may be sent off to an agent
+             some other background thread such as a future or something with reactors."}
+  message-responder
+  (guard [(complement sender-is-bot?)
+          invitation/authorized-for-channel?]
+         (send-response-as-message
+          (first-of [(addressed-command
+                      (first-of [phrasebook/handle-learn-phrase
+                                 scraper/handle-tags
+                                 ;;invitation/handle-invite
+                                 sandwich]))
+                     (ignore-address
+                      (first-of [phrasebook/handle-canned
+                                 dice/handle-roll
+                                 dice/handle-explode]))
+                     scraper/handle-scrape]))))
+
+;; irclj nuts and bolts
 
 (defn on-message [{:keys [message] :as all}]
+  "handles incoming messages"
   (let [pieces (map #(.toLowerCase %) (.split message " "))]        
-    (#'simple-responder (assoc all :pieces pieces))
+    (#'message-responder (assoc all :pieces pieces))
     (logging/handle-logging all)))
 
 (defn on-join
+  "handles incoming join notification"
   [all]
   (invitation/handle-join all))
 
