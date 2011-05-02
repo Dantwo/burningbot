@@ -45,9 +45,9 @@
                                  ;;invitation/handle-invite
                                  sandwich]))
                      (ignore-address
-                      (first-of [phrasebook/handle-canned
-                                 dice/handle-roll
-                                 dice/handle-explode]))
+                      (first-of [dice/handle-roll
+                                 dice/handle-explode
+                                 phrasebook/handle-canned]))
                      (addressed-command
                       (constantly "failed my gibberish-wise test"))
                      scraper/handle-scrape]))))
