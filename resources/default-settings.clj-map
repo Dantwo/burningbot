@@ -11,10 +11,14 @@
  :scraping {:sites {#{"www.burningwheel.org" 
                       "burningwheel.org"
                       "www.burningwheel.com" 
-                      "burningwheel.com"} [["/forum/" {:system :vbulletin3
+                      "burningwheel.com"
+                      "www.burningempires.com"
+                      "burningempires.com"} [["/forum/" {:system :vbulletin3
                                                        :title  "Burning Wheel Forum"}]
                                            ["/wiki/"  {:system :wikimedia
                                                        :title  "Burning Wheel Wiki"}]
+                                           ["/store/" {:system :burningstore
+                                                       :title  "Burning Wheel Store"}]
                                            [""        {:system :wordpress
                                                        :title  "Burning Wheel"
                                                        :title-set "«"}]]

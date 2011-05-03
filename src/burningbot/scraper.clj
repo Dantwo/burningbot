@@ -115,7 +115,10 @@
     (when (seq title)
       (str  "⇒  " page-title ": '" title "'"
             (when-let [tags (seq tags)]
-              (str " tagged as " (str/join ", " (keys tags))))))))
+              (str " tagged as " (str/join ", " (keys tags))))
+
+            (when-let [additional (seq (:additional info))]
+              (str " (" (str/join ", " (map second additional)) ")"))))))
 
 (defmulti perform-scraping (fn [^URL u r d] (:system r)))
 
@@ -138,6 +141,15 @@
                            (when (.startsWith title "Category:")
                              [(.toLowerCase (html/text node)) href]))
                          (html/select doc [:.catlinks :a])))})
+
+(defmethod perform-scraping :burningstore
+  [^URL url rules doc]
+  (let [essential (html/select doc [:.product-essential])]
+    {:title      (apply str (map html/text (html/select essential [:.product-name :h1])))
+     :additional {"Availability" (first (map html/text
+                                             (html/select essential [:.availability :span])))
+                  "Price"        (first (map html/text
+                                             (html/select essential [:.price])))}}))
 
 (defmethod perform-scraping :default [_ _ _] nil)
 
