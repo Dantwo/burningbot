@@ -75,10 +75,11 @@
              urls-seen (conj urls-seen url)]
          (try (doto conn
                 (.setInstanceFollowRedirects false)
-                (.setRequestMethod "HEAD")
+                (.setRequestMethod "GET")
                 (.setRequestProperty "User-Agent" "BurningBot-v0.awesome")
                 (.connect))
               (let [code (.getResponseCode conn)]
+
                 (cond (contains? #{301 302 303 307} code) (recur (-> conn
                                                                      (.getHeaderField "Location")
                                                                      (java.net.URL.))
@@ -182,7 +183,10 @@
               (scrape-page resolved-url irc channel)))))
 
 
-(def weburl-re #"(http://[^/\s]*(/\S*)?)")
+(def ^{:doc "John Gruber's url matching regexp from
+             http://daringfireball.net/2010/07/improved_regex_for_matching_urls"}
+  weburl-re
+  #"(?i)\b((?:[a-z][\w-]+:(?:/{1,3}|[a-z0-9%])|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'\".,<>?«»“”‘’]))")
 
 (defn handle-scrape
   [{:keys [message irc channel]}]
