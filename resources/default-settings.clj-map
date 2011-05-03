@@ -1,27 +1,36 @@
-{:irclj {:name "burningbot"
-         :username "burningbot"
-         :realname "#burningwheel bot"
-         :server "irc.synirc.net"}
+{:irclj             {:name "burningbot"
+                     :username "burningbot"
+                     :realname "#burningwheel bot"
+                     :server "irc.synirc.net"}
 
  :starting-channels ["#BurningWheel" "#burningbot"]
 
- :logging {:dir "logs/"
-           :channels #{"#BurningWheel"}}
+ :phrasebook        {:priviledged-users #{"brehaut"
+                                          "zelbinian"
+                                          "cathexis"
+                                          "oliof"
+                                          "peregrinpdx"
+                                          "lira"}}
+ 
+ :logging           {:dir "logs/"
+                     :channels #{"#BurningWheel"}}
 
- :scraping {:sites {#{"www.burningwheel.org" 
-                      "burningwheel.org"
-                      "www.burningwheel.com" 
-                      "burningwheel.com"
-                      "www.burningempires.com"
-                      "burningempires.com"} [["/forum/" {:system :vbulletin3
-                                                       :title  "Burning Wheel Forum"}]
-                                           ["/wiki/"  {:system :wikimedia
-                                                       :title  "Burning Wheel Wiki"}]
-                                           ["/store/" {:system :burningstore
-                                                       :title  "Burning Wheel Store"}]
-                                           [""        {:system :wordpress
-                                                       :title  "Burning Wheel"
-                                                       :title-set "«"}]]
-                      "forum.rpg.net"     {"/"        {:system :vbulletin3
-                                                       :title  "RPGnet"}}}}}
+ :scraping          {:sites {#{"www.burningwheel.org" 
+                               "burningwheel.org"
+                               "www.burningwheel.com" 
+                               "burningwheel.com"
+                               "www.burningempires.com"
+                               "burningempires.com"} [["/forum/" {:system :vbulletin3
+                                                                  :title  "Burning Wheel Forum"}]
+                                                      ["/wiki/"  {:system :wikimedia
+                                                                  :title  "Burning Wheel Wiki"}]
+                                                      ["/store/" {:system :burningstore
+                                                                  :title  "Burning Wheel Store"}]
+                                                      [""        {:system :wordpress
+                                                                  :title  "Burning Wheel"
+                                                                  :title-set "«"}]]
+
+                               "forum.rpg.net"       {"/"        {:system :vbulletin3
+                                                                  :title  "RPGnet"}}}}
+ :ping              {:sites {"burningwheel.org"  "Burning Wheel News"}}}
 
