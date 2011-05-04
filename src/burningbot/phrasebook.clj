@@ -40,7 +40,7 @@
 
 (defn handle-learn-phrase [{:keys [nick pieces message]}]
   (prn nick pieces message)
-  (when (contains? (settings/read-setting [:phrasebook :priviledged-users] #{}) nick)
+  (when (contains? (settings/read-setting [:phrasebook :priviledged-users] #{}) (.toLowerCase) nick)
     (cond (= "forget" (first pieces)) (let [key (second pieces)]
                                         (forget key)
                                         (str key "? nope, never heard of it."))
