@@ -61,6 +61,19 @@
 
 (let [logged-channels (settings/read-setting [:logging :channels])]
   (defn handle-logging
+    "this handler logs any message on a logged channel"
     [{:keys [nick message channel]}]
     (when (logged-channels channel)
-      (log-message nick message channel))))
+      (log-message nick message channel)))
+
+  (defn log-handler-response
+    "the log-handler-response middleware takes a handler and returns a new handler that logs the result
+     returned from that handler using the bots nick."
+    [handler]
+    (fn [{:keys [irc channel] :as info}]
+      (let [response (handler info)
+            botnick  (@irc :name)]
+        (when (and response
+                   (logged-channels channel))
+          (log-message botnick response channel))
+        response))))

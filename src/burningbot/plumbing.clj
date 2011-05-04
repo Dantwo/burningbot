@@ -30,6 +30,13 @@
         (irclj/send-message irc channel response))
       response)))
 
+(defn wrap-middleware
+  "takes a seq of middleware functions and wraps them around the handler provided returning a new handler.
+   the middlewares are applied in reverse order; this results in a  handler where the first middleware
+   listed is the first to process the incoming message."
+  [middlewares handler]
+  (reduce (fn [handler middleware] (middleware handler)) handler (reverse middlewares)))
+
 ;; the following functions deal with addressed commands
 
 (defn nick-address [s]

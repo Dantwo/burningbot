@@ -13,7 +13,8 @@
                                     send-response-as-message
                                     first-of
                                     addressed-command
-                                    ignore-address]]
+                                    ignore-address
+                                    wrap-middleware]]
         [clojure.pprint :only [pprint]]))
 
 (defn sender-is-bot?
@@ -38,7 +39,9 @@
   message-responder
   (guard [(complement sender-is-bot?)
           invitation/authorized-for-channel?]
-         (send-response-as-message
+         (wrap-middleware
+          [logging/log-handler-response
+           send-response-as-message]
           (first-of [(addressed-command
                       (first-of [phrasebook/handle-learn-phrase
                                  scraper/handle-tags
@@ -56,9 +59,9 @@
 
 (defn on-message [{:keys [message] :as all}]
   "handles incoming messages"
-  (let [pieces (map #(.toLowerCase %) (.split message " "))]        
-    (#'message-responder (assoc all :pieces pieces))
-    (logging/handle-logging all)))
+  (let [pieces (map #(.toLowerCase %) (.split message " "))]
+    (logging/handle-logging all)
+    (#'message-responder (assoc all :pieces pieces))))
 
 (defn on-join
   "handles incoming join notification"
