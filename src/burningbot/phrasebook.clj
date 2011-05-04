@@ -10,7 +10,8 @@
      * allow keys up to three words"
   
   (:require [clojure.java.io :as io]
-            [burningbot.settings :as settings]))
+            [burningbot.settings :as settings]
+            [clojure.string :as str]))
 
 (def phrasebook-url "resources/phrasebook")
 
@@ -46,7 +47,9 @@
                                         (str key "? nope, never heard of it."))
           (= "is" (second pieces)) (do
                                      (learn (first pieces) message)
-                                     "sure thing boss."))))
+                                     "sure thing boss.")
+          (= "definitions?")       (str/join " "
+                                             (dosync (keys @canned-phrases))))))
 
 (defn handle-canned
   [{:keys [message]}]
