@@ -4,6 +4,7 @@
                      :server "irc.synirc.net"}
 
  :starting-channels ["#BurningWheel" "#burningbot"]
+ :announcement-channel "#BurningWheel"
 
  :phrasebook        {:priviledged-users #{"brehaut"
                                           "zelbinian"
@@ -28,7 +29,7 @@
                                                                   :title  "Burning Wheel Store"}]
                                                       [""        {:system :wordpress
                                                                   :title  "Burning Wheel"
-                                                                  :title-set "«"}]]
+                                                                  :title-sep "«"}]]
 
                                "forum.rpg.net"       {"/"        {:system :vbulletin3
                                                                   :title  "RPGnet"}}}}

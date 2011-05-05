@@ -6,7 +6,8 @@
             [burningbot.logging :as logging]
             [burningbot.scraper :as scraper]
             [burningbot.settings :as settings]
-            [burningbot.phrasebook :as phrasebook])
+            [burningbot.phrasebook :as phrasebook]
+            [burningbot.web :as web])
   (:use [irclj.core]
         [burningbot.settings :only [settings]]
         [burningbot.plumbing :only [guard
@@ -73,7 +74,19 @@
                                          ;;:on-join #'on-join
                                          :on-connect (fn [_] (identify bot))}})))
 
+
+(defonce http-server (web/webserver (settings/read-setting [:web :port] 3002)
+                                    {:on-ping (fn [{:keys [site-name post]}]
+                                                (let [channel (settings/read-setting
+                                                               :announcement-channel)]
+                                                  (send-message bot channel
+                                                                (str "New on "
+                                                                     site-name
+                                                                     ": " post))
+                                                  (scraper/queue-scrape post bot channel))) }))
+
+
 (defn start-bot
-  []
+  [bot]
   (connect bot :channels (settings/read-setting :starting-channels)))
 
