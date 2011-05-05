@@ -6,12 +6,7 @@
  :starting-channels ["#BurningWheel" "#burningbot"]
  :announcement-channel "#BurningWheel"
 
- :phrasebook        {:priviledged-users #{"brehaut"
-                                          "zelbinian"
-                                          "cathexis"
-                                          "oliof"
-                                          "peregrinepdx"
-                                          "lira"}}
+ :phrasebook        {:channels #{"#burningwheel" "#burningbot"}}
  
  :logging           {:dir "logs/"
                      :channels #{"#BurningWheel"}}

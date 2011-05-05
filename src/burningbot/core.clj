@@ -74,19 +74,18 @@
                                          ;;:on-join #'on-join
                                          :on-connect (fn [_] (identify bot))}})))
 
-
-(defonce http-server (web/webserver (settings/read-setting [:web :port] 3002)
-                                    {:on-ping (fn [{:keys [site-name post]}]
-                                                (let [channel (settings/read-setting
-                                                               :announcement-channel)]
-                                                  (send-message bot channel
-                                                                (str "New on "
-                                                                     site-name
-                                                                     ": " post))
-                                                  (scraper/queue-scrape post bot channel))) }))
-
+(def http-server (atom nil))
 
 (defn start-bot
   [bot]
-  (connect bot :channels (settings/read-setting :starting-channels)))
+  (connect bot :channels (settings/read-setting :starting-channels))
+  (reset! http-server (web/webserver (settings/read-setting [:web :port] 3002)
+                                     {:on-ping (fn [{:keys [site-name post]}]
+                                                 (let [channel (settings/read-setting
+                                                                :announcement-channel)]
+                                                   (send-message bot channel
+                                                                 (str "New on "
+                                                                      site-name
+                                                                      ": " post))
+                                                   (scraper/queue-scrape post bot channel))) })))
 

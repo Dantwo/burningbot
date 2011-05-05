@@ -6,6 +6,7 @@
         [ring.adapter.jetty :only [run-jetty]]))
 
 (defn accept-ping-for-url [^java.net.URL url]
+  (prn "ping url" url)
   (contains? (settings/read-setting [:rpc :weblog-updates :domains] #{})
              (.getHost url)))
 
