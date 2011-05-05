@@ -9,9 +9,9 @@
                  [ring/ring-jetty-adapter "0.3.8"]
                  [net.cgrand/moustache "1.0.0"]
                  [necessary-evil "1.1.0"]
- ;;                [org.xerial/sqlite-jdbc "3.7.2"]
                  [mysql/mysql-connector-java "5.1.13"]
                  [clojureql "1.1.0-SNAPSHOT"]]
+  :dev-dependencies [[org.xerial/sqlite-jdbc "3.7.2"]]
   :resources-path "resources"
   :aot [burningbot.run]
   :main burningbot.run)
