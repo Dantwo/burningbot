@@ -30,7 +30,7 @@
           (= "is" (second pieces)) (do
                                      (learn-fact! channel (first pieces) message nick)
                                      "sure thing boss.")
-          (= "definitions?")       (str/join " " (db/query-fact-names channel)))))
+          (= "definitions?")       (str/join " " (map :name (db/query-fact-names channel))))))
 
 (defn handle-canned
   "handle-canned processes the message and tries to retrieve a fact from the phrasebook if it can"
