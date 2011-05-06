@@ -77,3 +77,13 @@
                    (logged-channels channel))
           (log-message botnick response channel))
         response))))
+
+;; retrieving logs
+
+(defn log-file
+  "returns a file or nil"
+  [channel date]
+  (try (io/file (settings/read-setting [:logging :dir])
+                channel
+                date)
+       (catch Exception e e nil)))
