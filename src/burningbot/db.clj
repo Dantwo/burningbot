@@ -56,7 +56,7 @@
 (defn query-fact-names
   "returns a seq of all the fact names for this channel"
   [channel]
-  (Q @(-> facts
+  (Q @(-> 
           (ql/select (ql/where (= :channel channel)))
           (ql/project [:name]))))
 
