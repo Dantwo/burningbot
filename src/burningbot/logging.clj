@@ -73,7 +73,7 @@
     (fn [{:keys [irc channel] :as info}]
       (let [response (handler info)
             botnick  (@irc :name)]
-        (when (and response
+        (when (and (string? response)
                    (logged-channels channel))
           (log-message botnick response channel))
         response))))
