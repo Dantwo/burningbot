@@ -3,7 +3,7 @@
   (:require [burningbot.settings :as settings]
             [burningbot.web.rpc :as rpc]
             [burningbot.logging :as logging])
-  (:use [clojure.java.io :only [resource file]]
+  (:use [clojure.java.io :only [resource input-stream]]
         [net.cgrand.moustache :only [app delegate]]
         [ring.util.response :only [response]]
         [ring.adapter.jetty :only [run-jetty]]))
@@ -22,7 +22,7 @@
   [req channel date]
   (response (if (request-is-ajax? req)
               (logging/log-file channel date)
-              (file (resource "logview.html")))))
+              (input-stream (resource "logview.html")))))
 
 (defn web-app
   "returns a new moustache web app"
