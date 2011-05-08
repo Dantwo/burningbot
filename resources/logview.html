@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script language="javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.5.2/jquery.min.js">
+</script>
+
+<script type="text/javascript">
+var gOverride = {
+  urlBase: 'http://gridder.andreehansson.se/releases/latest/',
+  gColor: '#EEEEEE',
+  gColumns: 16,
+  gOpacity: 0.25,
+  gWidth: 10,
+  pColor: '#C0C0C0',
+  pHeight: 18,
+  pOffset: 88,
+  pOpacity: 0.05,
+  center: true,
+  gEnabled: true,
+  pEnabled: true,
+  setupEnabled: true,
+  fixFlash: true,
+  size: 960
+};
+</script>
+
+<style>
+/* reset */    html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+h1 a, h2 a, h3 a, h4 a, h5 a, h6 a,
+h1 a:link, h2 a:link, h3 a:link, h4 a:link, h5 a:link, h6 a:link,
+h1 a:visited, h2 a:visited, h3 a:visited, h4 a:visited, h5 a:visited, h6 a:visited,
+h1 a:hover, h2 a:hover, h3 a:hover, h4 a:hover, h5 a:hover, h6 a:hover,
+h1 a:active, h2 a:active, h3 a:active, h4 a:active, h5 a:active, h6 a:active,
+h1 a.current, h2 a.current, h3 a.current, h4 a.current, h5 a.current, h6 a.current,
+h1 a.current:hover, h2 a.current:hover, h3 a.current:hover, h4 a.current:hover, h5 a.current:hover, h6 a.current:hover {
+    color: inherit;
+    padding: 0;
+    margin: 0;
+    display: block;
+    font-size: inherit;
+    line-height: inherit;
+    text-decoration: inherit;
+}
+
+.clearfix:after{clear:both;content:'.';display:block;visibility:hidden;height:0}.clearfix{display:inline-block}* html .clearfix{height:1%}.clearfix{display:block}
+.spacer { height: 1em; }.spacer.large { height: 4em; }
+
+a.current {
+	color: inherit;
+	cursor: default;
+}
+
+.clear {
+    clear: both;
+}
+
+
+article, section, aside, nav, hgroup, footer, header {
+    display: block;
+}
+
+h1 p, h2 p, h3 p, h4 p, h5 p, h6 p {
+    margin: 0;
+}
+
+/* style */
+body {
+    background: #eee; 
+    
+    color: #333;
+    font: 9pt/1.5 helvetica;
+    font-weight: normal;
+}
+
+#container {
+    width: 940px;
+    margin: 20px auto;
+    padding: 20px 10px;
+    position: relative;
+    background: #fafafa;
+    -webkit-border-radius: 10px;
+    -moz-border-radius: 10px;
+    border-radius: 10px;
+    -webkit-box-shadow: 0 5px 10px #ddd;
+    -moz-box-shadow: 0 5px 10px #ddd;
+}
+
+h1,h2,h3,h4 {
+    font-weight: normal;
+    color: black;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+h1 { 
+    font-size: 1em;
+}
+
+h2 { 
+    font-size: 1em;
+}
+
+header#masthead {
+    background: #333; /* Old browsers */
+    
+    border-bottom: 1px solid #eee;
+    margin: -20px -10px 20px -10px;
+    padding: 3em 10px 1em 10px;
+    -webkit-border-radius: 10px 10px 0 0;
+    -moz-border-radius: 10px 10px 0 0;
+    border-radius: 10px 10px 0 0;
+}
+
+header#masthead h1 {
+    width: 180px;
+    float: left;
+    margin-left: 60px;
+    color: #fafafa;
+}
+
+header#masthead h2 {
+    float: left;
+    color: #bbb;    
+}
+
+li.messages > strong {
+    width: 160px;
+    padding-left: 60px;
+    margin-right: 20px;
+    float: left;
+    clear: both;
+}
+
+li.messages div {
+    float: left;
+    width: 580px;
+    position: relative;
+}
+
+li.messages .timestamp {
+    position: absolute;
+    left: -240px;
+    font-size: 0.75em;
+    line-height: 15pt;
+    color: #888;
+}
+
+li.messages.botspeak {
+    color: #888;
+}
+
+li.messages.pause {
+    margin-top: 3em;
+    padding-top: 3em;
+    border-top: 1px solid #ccc;
+}
+#log { display: none; }
+</style>
+
+<script>
+
+function process_log(text) {
+    var lines = text.split("\n");
+    var messages = [];
+    for (var i = 0, j = lines.length; i < j; i++) {
+        var match = lines[i].match(/^(\d\d):(\d\d):(\d\d) <([^>]+)> (.+)$/);
+        if (!match) continue;
+        
+        var t = new Date();
+        t.setHours(+match[1]);
+        t.setMinutes(+match[2]);
+        t.setSeconds(+match[3]);
+        
+        messages.push({
+            time: t,
+            nick: match[4],
+            text: match[5],
+        });
+    }
+    return messages;
+}
+
+function group_messages(messages) {
+    var grouped = [];
+    var current = null;
+    var last = null;
+
+    var dead_time = 1000 * 60 * 10;
+    for (var i = 0, j = messages.length; i < j; i++) {
+        var message = messages[i];
+
+        if (!last || message.nick != last.nick || message.time - last.time > dead_time) {
+            current = [];
+            grouped.push(current);
+        }
+        last = message;
+
+        current.push(message);
+    }
+    return grouped;
+}
+
+function pad(n, digits) {
+    var s = [];
+    for (zeros = digits - Math.floor(n).toString().length; zeros > 0; zeros--) s.push("0");
+    s.push(n.toString());
+    return s.join("");
+}
+
+function install_log(text) {
+    var ul = $("<ul>").addClass("clearfix");
+    
+    var last_stamp = null;
+    var last_group = null
+    
+    $.each(group_messages(process_log (text)), function (_, group) {
+        var li = $("<li>").addClass("messages clearfix");
+        var text = $("<div>");
+        var nick = group[0].nick;
+        
+        if (nick.match(/bot$/)) li.addClass("botspeak");
+        if (last_group && nick == last_group[0].nick) {
+          li.addClass("pause")
+          console.log("pause found")  
+        } 
+        
+        li.append($("<strong>").text(group[0].nick+" "));
+        li.append(text);
+        
+        $.each(group, function (_, message) { 
+            
+            if (last_stamp == null || (message.time - last_stamp > (1000 * 60))) {
+                text.append($("<span class='timestamp'>")
+                    .text(pad(message.time.getHours(), 2) + 
+                          ":" + 
+                          pad(message.time.getMinutes(), 2)));
+                last_stamp = message.time;
+            }
+            
+            text.append(message.text);
+            text.append($("<br/>"))
+        })
+        ul.append(li);
+        
+        last_group = group;
+    }) 
+    $("#container").append(ul);
+}
+
+$(function () {
+    $.ajax(location).then(install_log);
+});
+</script>
+</head>
+<body>
+    <div id="container">
+        <header id="masthead" class="clearfix">
+            <h1>Burningbot</h1>
+            <h2>#BurningWheel Logs</h2>
+        </header>
+    </div>
+</body>
+</html>

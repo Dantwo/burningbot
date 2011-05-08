@@ -3,7 +3,8 @@
   (:require [burningbot.settings :as settings]
             [burningbot.web.rpc :as rpc]
             [burningbot.logging :as logging])
-  (:use [net.cgrand.moustache :only [app delegate]]
+  (:use [clojure.java.io :only [resource file]]
+        [net.cgrand.moustache :only [app delegate]]
         [ring.util.response :only [response]]
         [ring.adapter.jetty :only [run-jetty]]))
 
@@ -12,9 +13,16 @@
   (contains? (settings/read-setting [:rpc :weblog-updates :domains] #{})
              (.getHost url)))
 
+(defn request-is-ajax?
+  [req]
+  (= (get-in req [:headers "x-requested-with"])
+     "XMLHttpRequest"))
+
 (defn log-for-day
   [req channel date]
-  (response (logging/log-file channel date)))
+  (response (if (request-is-ajax? req)
+              (logging/log-file channel date)
+              (file (resource "logview.html")))))
 
 (defn web-app
   "returns a new moustache web app"
