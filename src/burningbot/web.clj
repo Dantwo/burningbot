@@ -5,7 +5,7 @@
             [burningbot.logging :as logging])
   (:use [clojure.java.io :only [resource input-stream]]
         [net.cgrand.moustache :only [app delegate]]
-        [ring.util.response :only [response]]
+        [ring.util.response :only [response content-type]]
         [ring.adapter.jetty :only [run-jetty]]))
 
 (defn accept-ping-for-url [^java.net.URL url]
@@ -20,9 +20,11 @@
 
 (defn log-for-day
   [req channel date]
-  (response (if (request-is-ajax? req)
-              (logging/log-file channel date)
-              (input-stream (resource "logview.html")))))
+  (if (request-is-ajax? req)
+    (-> (logging/log-file channel date)
+        response
+        (content-type "text/plain; charset=utf8"))
+    (response (input-stream (resource "logview.html")))))
 
 (defn web-app
   "returns a new moustache web app"

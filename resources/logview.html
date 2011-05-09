@@ -160,6 +160,18 @@ li.messages.pause {
 
 <script>
 
+function zip_partition(array, pred) {
+    var s = [];
+    for (var i = 0, j = array.length; i < j; i++) {
+        if (current == null || pred(array[i], array[i - 1])) {
+            var current = [];
+            s.push(current);
+        }
+        current.push(array[i]);
+    }
+    return s;
+}
+
 function process_log(text) {
     var lines = text.split("\n");
     var messages = [];
@@ -182,23 +194,13 @@ function process_log(text) {
 }
 
 function group_messages(messages) {
-    var grouped = [];
-    var current = null;
-    var last = null;
-
     var dead_time = 1000 * 60 * 10;
-    for (var i = 0, j = messages.length; i < j; i++) {
-        var message = messages[i];
-
-        if (!last || message.nick != last.nick || message.time - last.time > dead_time) {
-            current = [];
-            grouped.push(current);
-        }
-        last = message;
-
-        current.push(message);
-    }
-    return grouped;
+    
+    return zip_partition(messages, function (current, previous) {
+        if (current.nick != previous.nick) return true;
+        if (current.time - previous.time > dead_time) return true;
+        return false
+    });
 }
 
 function pad(n, digits) {
@@ -222,7 +224,6 @@ function install_log(text) {
         if (nick.match(/bot$/)) li.addClass("botspeak");
         if (last_group && nick == last_group[0].nick) {
           li.addClass("pause")
-          console.log("pause found")  
         } 
         
         li.append($("<strong>").text(group[0].nick+" "));
