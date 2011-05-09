@@ -159,6 +159,7 @@ li.messages.pause {
 </style>
 
 <script>
+var DEAD_TIME = 1000 * 60 * 10;
 
 function zip_partition(array, pred) {
     var s = [];
@@ -194,11 +195,9 @@ function process_log(text) {
 }
 
 function group_messages(messages) {
-    var dead_time = 1000 * 60 * 10;
-    
     return zip_partition(messages, function (current, previous) {
         if (current.nick != previous.nick) return true;
-        if (current.time - previous.time > dead_time) return true;
+        if (current.time - previous.time > DEAD_TIME) return true;
         return false
     });
 }
@@ -222,7 +221,7 @@ function install_log(text) {
         var nick = group[0].nick;
         
         if (nick.match(/bot$/)) li.addClass("botspeak");
-        if (last_group && nick == last_group[0].nick) {
+        if (last_group && group[0].time - last_group[last_group.length - 1].time > DEAD_TIME) {
           li.addClass("pause")
         } 
         
