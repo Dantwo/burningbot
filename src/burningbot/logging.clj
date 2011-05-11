@@ -6,6 +6,10 @@
             [burningbot.settings :as settings])
   (:use [clj-time.format :only [unparse]]))
 
+(defn obscure-email
+  [^String message]
+  (.replaceAll message "(?i)[a-z0-9.-]+@[a-z0-9.]+" "<email obscured>"))
+
 (defn log-filename
   [ts]
   (str/join "-" ((juxt t/year t/month t/day) ts)))
@@ -57,7 +61,8 @@
 (defn log-message
   "This function sends a message to the logger agent to write to a log file"
   [nick message channel]
-  (.put (mailbox-for-channel! channel) [nick message (t/now)]))
+  (let [message (obscure-email message)]
+    (.put (mailbox-for-channel! channel) [nick message (t/now)])))
 
 (let [logged-channels (settings/read-setting [:logging :channels])]
   (defn handle-logging

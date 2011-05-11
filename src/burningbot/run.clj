@@ -3,4 +3,4 @@
   (:gen-class))
 
 (defn -main [& args]
-  (start-bot bot))
+  (start-web (start-bot)))
