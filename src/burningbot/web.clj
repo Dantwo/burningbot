@@ -24,7 +24,8 @@
     (-> (logging/log-file channel date)
         response
         (content-type "text/plain; charset=utf8"))
-    (response (input-stream (resource "logview.html")))))
+    (-> (response (input-stream (resource "logview.html")))
+        (content-type "text/html; charset=utf8"))))
 
 (defn web-app
   "returns a new moustache web app"
