@@ -13,7 +13,7 @@
 }
 
 @font-face {
-    font-family: 'griffos/GriffosSCaps';
+    font-family: 'GriffosSCaps';
     src: url('griffos/GriffosSCapsFont-webfont.eot');
     src: url('griffos/GriffosSCapsFont-webfont.eot?#iefix') format('embedded-opentype'),
          url('griffos/GriffosSCapsFont-webfont.woff') format('woff'),
@@ -68,7 +68,7 @@ h1 p, h2 p, h3 p, h4 p, h5 p, h6 p {
 body {
     background: #eee url(exclusive_paper.gif); 
     color: #333;
-    font: 13pt/1.25 "GriffosFont", Georgia, Times;
+    font: 13pt/1.25 "Griffos", Georgia, Times;
     font-weight: normal;
 }
 
