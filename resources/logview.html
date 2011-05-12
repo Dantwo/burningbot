@@ -7,7 +7,7 @@
 <script type="text/javascript">
 var gOverride = {
   urlBase: 'http://gridder.andreehansson.se/releases/latest/',
-  gColor: '#EEEEEE',
+  gColor: '#333333',
   gColumns: 16,
   gOpacity: 0.25,
   gWidth: 10,
@@ -164,7 +164,11 @@ li.messages.pause {
 #log { display: none; }
 </style>
 
+
 <script>
+
+// log processing
+
 var DEAD_TIME = 1000 * 60 * 10;
 
 function zip_partition(array, pred) {
@@ -179,26 +183,34 @@ function zip_partition(array, pred) {
     return s;
 }
 
-function process_log(text) {
-    var lines = text.split("\n");
-    var messages = [];
-    for (var i = 0, j = lines.length; i < j; i++) {
-        var match = lines[i].match(/^(\d\d):(\d\d):(\d\d) <([^>]+)> (.+)$/);
-        if (!match) continue;
+
+var process_log = (function () {
+    var run = 0;
+    
+    return function (text) {
+        var lines = text.split("\n");
+        var messages = [];
+        for (var i = 0, j = lines.length; i < j; i++) {
+            var match = lines[i].match(/^(\d\d):(\d\d):(\d\d) <([^>]+)> (.+)$/);
+            if (!match) continue;
         
-        var t = new Date();
-        t.setHours(+match[1]);
-        t.setMinutes(+match[2]);
-        t.setSeconds(+match[3]);
+            var t = new Date();
+            t.setHours(+match[1]);
+            t.setMinutes(+match[2]);
+            t.setSeconds(+match[3]);
         
-        messages.push({
-            time: t,
-            nick: match[4],
-            text: match[5],
-        });
-    }
-    return messages;
-}
+            messages.push({
+                id: run + "_" + messages.length,
+                time: t,
+                nick: match[4],
+                text: match[5],
+            });
+        }
+        run++;
+        
+        return messages;
+    };
+})();
 
 function group_messages(messages) {
     return zip_partition(messages, function (current, previous) {
@@ -208,11 +220,109 @@ function group_messages(messages) {
     });
 }
 
+// marks
+
+function draw_bracket(top, height, tag) {
+    if (!document.createElement('canvas').getContext) return;
+    
+    var canvas = document.createElement('canvas');
+    $(canvas).attr({width:100, height: height});
+              
+    var ctx = canvas.getContext("2d");
+    ctx.beginPath();
+    ctx.moveTo(7.5,0.5)
+    ctx.lineTo(10.5,0.5);
+    ctx.arc(10.5,5.5, 5, Math.PI * 1.5, 0, false);
+    ctx.lineTo(15.5,20.5);
+    ctx.arc(20.5,25.5, 5, Math.PI, Math.PI / 2, true);
+    ctx.arc(20.5,35.5, 5, Math.PI * 1.5, Math.PI, true);
+    ctx.lineTo(15.5,height-6.5);
+    ctx.arc(10.5,height-6.5, 5, 0, Math.PI * 0.5, false);
+    ctx.lineTo(7.5,height - 1.5)
+
+    ctx.strokeStyle = "#eee";
+    ctx.lineWidth = 6;
+    ctx.stroke();
+
+    ctx.strokeStyle = "#666";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    var mark = $("<div class=\"mark\">")
+                    .css({position: "absolute",
+                          right: "10px",
+                          width: "75px",
+                          top: top,
+                          opacity: 0.75});
+    mark.append(canvas);
+    mark.append($("<a>").text(tag)
+                        .addClass("tag")
+                        .css({"position": "absolute",
+                              "display": "block",
+                              "left":"25px",
+                              "top":"20px",
+                              "color": "#666",
+                              "text-transform": "lowercase",
+                              "letter-spacing": "0px",
+                              "font-size": "0.8em",
+                              "-webkit-transform":"rotate(" + ((Math.random() * 8) - 4) + "deg)"}))
+                        
+    $(".log-body").append(mark);
+}
+
+
+function nearest_timestamp(messages, timestring) {
+    var t = new Date();
+    match = timestring.split(":");
+    t.setHours(+match[0]);
+    t.setMinutes(+match[1]);
+    t.setSeconds(0);
+    
+    console.log (">", t)
+
+    var low = 0;
+    var high = messages.length;   
+     
+    for (var i = Math.log(messages.length) / Math.log(2) + 1; i >= 0; i--) {
+        var pivot = Math.floor((high - low) / 2) + low;
+    
+        var m = messages[pivot]
+        if (m.time == t || high - low <= 1) {
+            return m;
+        } 
+        else if (m.time > t) {
+            high = pivot;
+        }
+        else {
+            low = pivot;
+        }
+        console.log(low, high, pivot)
+    }
+}
+
+function draw_marks(messages, marks) {
+    $.each(marks, function (_, mark) {
+        var start = $(document.getElementById(nearest_timestamp(messages, mark.start).id)).offset().top;
+        var stop = $(document.getElementById(nearest_timestamp(messages, mark.stop).id)).offset().top
+        draw_bracket(start, stop - start, mark.tags[0]);
+    })
+}
+
+// display log
+
+
 function pad(n, digits) {
     var s = [];
     for (zeros = digits - Math.floor(n).toString().length; zeros > 0; zeros--) s.push("0");
     s.push(n.toString());
     return s.join("");
+}
+
+function smart_quote(text) {
+    return text.replace(/(^|\s)"(\S)/, "$1“$2")
+               .replace(/(^|\s)'(\S)/, "$1‘$2")
+               .replace(/(\S)"(\s|$)/, "$1”$2")
+               .replace(/(\s)'(\S|$)/, "$1’$2");
 }
 
 function populate(text) {
@@ -221,7 +331,9 @@ function populate(text) {
     var last_stamp = null;
     var last_group = null
     
-    $.each(group_messages(process_log (text)), function (_, group) {
+    var messages = process_log (text);
+    
+    $.each(group_messages(messages), function (_, group) {
         var li = $("<li>").addClass("messages clearfix");
         var text = $("<div>");
         var nick = group[0].nick;
@@ -244,7 +356,8 @@ function populate(text) {
                 last_stamp = message.time;
             }
             
-            text.append($("<span>").text(message.text));
+            text.append($("<span>").text(smart_quote(message.text))
+                                   .attr("id", message.id));
             text.append($("<br/>"))
         })
         ul.append(li);
@@ -252,6 +365,10 @@ function populate(text) {
         last_group = group;
     }) 
     $("section.log-body").append(ul);
+    
+    
+//    draw_marks(messages, marks);
+
 }
 
 function load_log(date, destination) {
@@ -259,9 +376,14 @@ function load_log(date, destination) {
     $(".log-date").text(location.pathname.match(/\d{4}-\d\d?-\d\d?$/)[0]);    
 }
 
+var marks = [
+    {start: "00:00", stop: "00:10", tags: ["test"]},
+    {start:"00:30", stop:"01:20", tags: ["positioning"]}
+];
+
 
 $(function () {
-    load_log(location)
+    load_log(location);
 });
 </script>
 </head>
