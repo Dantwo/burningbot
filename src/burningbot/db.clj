@@ -1,6 +1,7 @@
 (ns burningbot.db
   "database functions for burningbot"
   (:require [clojureql.core :as ql]
+            [clojure.contrib.sql :as sql]
             [burningbot.settings :as settings]))
 
 (def db (settings/read-setting :database))
@@ -79,3 +80,45 @@
          (ql/join facts (ql/where (= :facts.id :content_id)))
          (ql/select (ql/where (= :channel channel)))
          (ql/project [:facts.name :facts.value :facts.creator :facts.channel]))))
+
+;; logmarks
+
+(defn insert-and-get-id!
+  "Theoretically clojureql supports returning the last insert id as meta data on inserts etc
+   but as that has not been working for me, this function will suffice."
+  [db table-key record]
+  (Q (sql/with-connection db
+       (sql/transaction
+        (sql/insert-records table-key record)
+        (sql/with-query-results result ["SELECT Last_Insert_Id() as LastID;"]
+          (-> result first :lastid))))))
+
+(defn- get-tag-id
+  [tag_name]
+  (if-let [id (-> @(ql/select tags (ql/where (= :tag tag_name))) first :id)]
+    id
+    (insert-and-get-id! db :tags {:tag tag_name})))
+
+(defn insert-logmark!
+  "inserts a new log mark into the database and associates some tags with it."
+  [{:keys [channel author start end tags]}]
+  (Q (sql/with-connection db
+       (sql/transaction
+        (let [id (insert-and-get-id! db :logmarks
+                                     {:channel channel
+                                      :author author
+                                      :start start
+                                      :end end})
+              tag_ids (into {} (map (juxt identity get-tag-id) tags))
+              tagref {:content_id id
+                      :content_type (content-types ::logmarks)}]
+          (ql/conj! tag-refs (map #(assoc tagref :tag_id (tag_ids %)) tags)))))))
+
+(defn query-logmarks-for-day
+  [channel date]
+  (Q @(-> logmarks
+          (ql/select (ql/where (and (>= :start date))))
+          (ql/join tag-refs (ql/where (and (= :content_id :logmarks.id)
+                                           (= :content_type (content-types ::logmarks)))))
+          (ql/join tags (ql/where (= :tag_ref.tag_id :tags.id)))
+          (ql/project [:start :end :tags.tag]))))

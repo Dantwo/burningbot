@@ -147,27 +147,45 @@ function nearest_timestamp(messages, timestring) {
     var high = messages.length;   
      
     for (var i = Math.log(messages.length) / Math.log(2) + 1; i >= 0; i--) {
-        var pivot = Math.floor((high - low) / 2) + low;
+        var pivot = Math.floor((high + low) / 2);
     
-        var m = messages[pivot]
-        if (m.time == t || high - low <= 1) {
-            return m;
+        if (high - low <= 1) {
+            return (Math.abs(t - messages[pivot].time) < Math.abs(t - messages[pivot+1].time))
+                    ? messages[pivot] 
+                    : messages[pivot + 1];
         } 
-        else if (m.time > t) {
+        else if (messages[pivot].time > t) {
             high = pivot;
         }
         else {
             low = pivot;
         }
-        console.log(low, high, pivot)
     }
 }
 
 function draw_marks(messages, marks) {
+    var doc_height = $(document.body).height();
+    
     $.each(marks, function (_, mark) {
         var start = $(document.getElementById(nearest_timestamp(messages, mark.start).id)).offset().top;
         var stop = $(document.getElementById(nearest_timestamp(messages, mark.stop).id)).offset().top
         draw_bracket(start, stop - start, mark.tags[0]);
+        
+        var contextBar = $("<div>").addClass("markContext")
+                                   .css({"position":"fixed",
+                                         "width": "10px",
+                                         "right": "0",
+                                         "height": (((stop - start) / doc_height) * 100) +"%",
+                                         "top": ((start / doc_height) * 100) +"%",
+                                         "border": "5px solid transparent",
+                                         "border-right-color": "rgba(0,0,0,0.1)",
+                                         "cursor": "pointer"})
+                                   .click(function () {
+                                       $("html:not(:animated),body:not(:animated)")
+                                           .animate({scrollTop: start});
+                                   });
+        $(document.body).append(contextBar);
+        console.log((stop - start), doc_height, (((stop - start) / doc_height) * 100) +"%")
     })
 }
 
@@ -182,10 +200,10 @@ function pad(n, digits) {
 }
 
 function smart_quote(text) {
-    return text.replace(/(^|\s)"(\S)/, "$1“$2")
-               .replace(/(^|\s)'(\S)/, "$1‘$2")
-               .replace(/(\S)"(\s|$)/, "$1”$2")
-               .replace(/(\s)'(\S|$)/, "$1’$2");
+    return text.replace(/(^|\s)"(\S)/g, "$1“$2")
+               .replace(/(^|\s)'(\S)/g, "$1‘$2")
+               .replace(/(\S)"(\s|$)/g, "$1”$2")
+               .replace(/(\s)'(\S|$)/g, "$1’$2");
 }
 
 function populate(text) {
@@ -233,7 +251,7 @@ function populate(text) {
     $("section.log-body").append(ul);
     
     
-//    draw_marks(messages, marks);
+    draw_marks(messages, marks);
 
 }
 
