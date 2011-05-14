@@ -2,9 +2,34 @@
   "database functions for burningbot"
   (:require [clojureql.core :as ql]
             [clojure.contrib.sql :as sql]
+            [clj-time.coerce]
+            [clj-time.core :as time]
             [burningbot.settings :as settings]))
 
+;; utilities
+
+(defn maybe-fn
+  "wraps a function in a when test for its sole argument; if the argument is nil then
+   the function is not called."
+  [f & r]
+  #(when (not (nil? %)) (apply f % r)))
+
+(def maybe-from-date (maybe-fn clj-time.coerce/from-date))
+
+(def maybe-to-date (maybe-fn clj-time.coerce/to-date))
+
+(defn start-of-day
+  [^org.joda.time.DateTime date]
+  (time/date-time (time/year date) (time/month date) (time/day date) 0 0 0))
+
+(defn end-of-day
+  [^org.joda.time.DateTime date]
+  (time/date-time (time/year date) (time/month date) (time/day date) 23 59 59 999))
+
+;; database
+
 (def db (settings/read-setting :database))
+
 
 (defmacro Q
   "This macro elides the body of any query if db settings are not available."
@@ -106,19 +131,33 @@
        (sql/transaction
         (let [id (insert-and-get-id! db :logmarks
                                      {:channel channel
-                                      :author author
-                                      :start start
-                                      :end end})
+                                      :author  author
+                                      :start   (maybe-to-date start)
+                                      :end     (maybe-to-date end)})
               tag_ids (into {} (map (juxt identity get-tag-id) tags))
               tagref {:content_id id
                       :content_type (content-types ::logmarks)}]
           (ql/conj! tag-refs (map #(assoc tagref :tag_id (tag_ids %)) tags)))))))
 
+
 (defn query-logmarks-for-day
+  "Returns all the log marks for a particular channel and day. This is the inverse of insert-logmark!"
   [channel date]
-  (Q @(-> logmarks
-          (ql/select (ql/where (and (>= :start date))))
-          (ql/join tag-refs (ql/where (and (= :content_id :logmarks.id)
-                                           (= :content_type (content-types ::logmarks)))))
-          (ql/join tags (ql/where (= :tag_ref.tag_id :tags.id)))
-          (ql/project [:start :end :tags.tag]))))
+  (Q (let [start-date (-> date start-of-day clj-time.coerce/to-date)
+           end-date   (-> date end-of-day clj-time.coerce/to-date)
+           records    @(-> logmarks
+                           (ql/select (ql/where (or (and (>= :start start-date)
+                                                         (<= :start end-date))
+                                                    (and (>= :end start-date)
+                                                         (<= :end end-date)))))
+                           (ql/join tag-refs (ql/where (and (= :content_id :logmarks.id)
+                                                            (= :content_type (content-types ::logmarks)))))
+                           (ql/join tags (ql/where (= :tag_ref.tag_id :tags.id)))
+                           (ql/project [:id :channel :author :start :end :tags.tag]))
+           marks      (group-by :id records)]
+       (map (fn [[_ [{:keys [start end channel author channel] :as m} & _ :as marks]]]
+              {:start   (maybe-from-date start)
+               :end     (maybe-from-date end)
+               :tags    (map :tag marks)
+               :author  author
+               :channel channel}) marks))))
