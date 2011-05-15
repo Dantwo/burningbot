@@ -93,14 +93,14 @@ header#masthead {
 
 header#masthead h1 {
     margin-left: 60px;
-    color: #333;
+    color: #3B311E;
     font-size: 4em;
     line-height: 1;
 }
 
 header#masthead h2 {
     margin-left: 60px;
-    color: #999;
+    color: #8E8980;
     line-height: 1;
     font-size: 2em;
 }
@@ -130,7 +130,7 @@ li.messages {
 }
 
 li:nth-of-type(2n+1) {
-    background: rgba(0,0,0,0.025);
+    background: rgba(77,59,23,0.025);
 }
 
 li.messages > strong {
