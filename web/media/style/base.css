@@ -67,7 +67,7 @@ h1 p, h2 p, h3 p, h4 p, h5 p, h6 p {
 /* style */
 body {
     background: #eee url(exclusive_paper.gif); 
-    color: #333;
+    color: #8E8980;
     font: 13pt/1.25 "Griffos", Georgia, Times;
     font-weight: normal;
 }
@@ -81,9 +81,22 @@ body {
 
 h1,h2,h3,h4 {
     font-weight: normal;
-    color: black;
+    color: #3B311E;
     text-transform: uppercase;
 }
+
+h1 {
+    font-size: 2em;
+}
+
+h2 {
+    font-size: 1.5em;
+}
+
+p {
+    margin: 1em 0;
+}
+
 
 header#masthead {
     border-bottom: 1px solid #666;
@@ -107,7 +120,7 @@ header#masthead h2 {
 
 header#masthead h2.log-date {
     margin-left: 70px;
-    color: #999;
+    color: #8E8980;
     line-height: 1.1;
     font-size: 2em;
     position: absolute;
@@ -177,3 +190,8 @@ li.messages.pause {
 }
 
 #log { display: none; }
+
+article {
+    margin-left: 70px;
+    width: 520px;
+}

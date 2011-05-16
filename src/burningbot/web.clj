@@ -2,11 +2,14 @@
   "burningbot.web is the top level namespace for all the http listening logic."
   (:require [burningbot.settings :as settings]
             [burningbot.web.rpc :as rpc]
+            [burningbot.web.views :as views]
             [burningbot.logging :as logging])
   (:use [clojure.java.io :only [resource input-stream]]
         [net.cgrand.moustache :only [app delegate]]
         [ring.util.response :only [response content-type]]
         [ring.adapter.jetty :only [run-jetty]]))
+
+(def html-response (comp #(content-type % "text/html; charset=utf8") response ))
 
 (defn accept-ping-for-url [^java.net.URL url]
   (prn "ping url" url)
@@ -24,8 +27,12 @@
     (-> (logging/log-file channel date)
         response
         (content-type "text/plain; charset=utf8"))
-    (-> (response (input-stream (resource "logview.html")))
+    (-> (response (views/main-template (str "Log for " channel " " date) views/loading))
         (content-type "text/html; charset=utf8"))))
+
+(defn static-view
+  [& template-args]
+  (fn [req] (html-response (apply views/main-template template-args ))))
 
 (defn web-app
   "returns a new moustache web app"
@@ -34,7 +41,8 @@
                 accept-ping-for-url
                 on-ping)
        ["logs" [channel #"[a-z]+"] [date #"\d{4}-\d\d?-\d\d?"]] (delegate log-for-day channel date)
-       [] ["Burningbot"]))
+       ["colophon"] (static-view "Colophon" views/colophon)
+       [] (static-view "burningbot" views/home)))
 
 (defn webserver
   "returns a jetty instance that listens to a specified port. takes a map of delefate functiosn
