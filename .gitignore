@@ -1,0 +1,10 @@
+pom.xml
+*jar
+/lib/
+/classes/
+.lein-deps-sum
+settings.clj-map
+resources/phrasebook
+web/media/style/exclusive_paper.gif~
+web/media/style/griffos/demo.html
+web/media/style/griffos/stylesheet.css
