@@ -7,19 +7,18 @@
   (:use [clojure.java.io :only [resource input-stream]]
         [net.cgrand.moustache :only [app delegate]]
         [ring.util.response :only [response content-type]]
-        [ring.adapter.jetty :only [run-jetty]]))
+        [ring.adapter.jetty :only [run-jetty]]
+        [burningbot.web.utils :only [html-response
+                                     json-response
+                                     request-is-ajax?]]))
 
-(def html-response (comp #(content-type % "text/html; charset=utf8") response ))
+
 
 (defn accept-ping-for-url [^java.net.URL url]
   (prn "ping url" url)
   (contains? (settings/read-setting [:rpc :weblog-updates :domains] #{})
              (.getHost url)))
 
-(defn request-is-ajax?
-  [req]
-  (= (get-in req [:headers "x-requested-with"])
-     "XMLHttpRequest"))
 
 (defn log-for-day
   [req channel date]
@@ -34,12 +33,23 @@
   [& template-args]
   (fn [req] (html-response (apply views/main-template template-args ))))
 
+(defn log-meta [req channel date]
+  (json-response {}))
+
+(def web-api
+  (app
+   ["logs" [channel #"[a-z]+"] [date #"\d{4}-\d\d?-\d\d?"] &]
+   (app
+    ["meta"] (delegate log-meta channel date)
+    ["text"] (delegate log-for-day channel date))))
+
 (defn web-app
   "returns a new moustache web app"
   [{:keys [on-ping]}]
   (app ["rpc"] (rpc/new-weblogs-update-endpoint
                 accept-ping-for-url
                 on-ping)
+       ["api" &] web-api 
        ["logs" [channel #"[a-z]+"] [date #"\d{4}-\d\d?-\d\d?"]] (delegate log-for-day channel date)
        ["colophon"] (static-view "Colophon" views/colophon)
        [] (static-view "burningbot" views/home)))

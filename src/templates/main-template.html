@@ -168,7 +168,10 @@ function draw_marks(messages, marks) {
     
     $.each(marks, function (_, mark) {
         var start = $(document.getElementById(nearest_timestamp(messages, mark.start).id)).offset().top;
-        var stop = $(document.getElementById(nearest_timestamp(messages, mark.stop).id)).offset().top
+        var end_message = $(document.getElementById(nearest_timestamp(messages, 
+                                                                      mark.stop).id));
+        var stop = end_message.offset().top + end_message[0].offsetHeight;
+        
         draw_bracket(start, stop - start, mark.tags[0]);
         
         var contextBar = $("<div>").addClass("markContext")
