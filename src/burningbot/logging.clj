@@ -3,7 +3,8 @@
             [clojure.string :as str]
             [clj-time.core :as t]
             [clj-time.format]
-            [burningbot.settings :as settings])
+            [burningbot.settings :as settings]
+            [burningbot.db :as db])
   (:use [clj-time.format :only [unparse]]))
 
 (defn obscure-email
@@ -85,10 +86,26 @@
 
 ;; retrieving logs
 
+(defn- log-file*
+  [channel date]
+  (io/file (settings/read-setting [:logging :dir])
+           channel
+           (log-filename date)))
+
+(defn log-exists?
+  [channel date]
+  (.exists (log-file* channel date)))
+
 (defn log-file
   "returns a file or nil"
   [channel date]
-  (try (io/file (settings/read-setting [:logging :dir])
-                channel
-                date)
-       (catch Exception e e nil)))
+  (let [log (log-file* channel date)]
+    (when (.exists log)
+      log)))
+
+(defn log-metadata
+  "returns the metadata for a given channel and date"
+  [channel date]
+  (when (log-exists? channel date)
+    {:channel channel
+     :marks (db/query-logmarks-for-day channel date)}))

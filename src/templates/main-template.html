@@ -140,8 +140,6 @@ function nearest_timestamp(messages, timestring) {
     t.setHours(+match[0]);
     t.setMinutes(+match[1]);
     t.setSeconds(0);
-    
-    console.log (">", t)
 
     var low = 0;
     var high = messages.length;   
@@ -169,7 +167,7 @@ function draw_marks(messages, marks) {
     $.each(marks, function (_, mark) {
         var start = $(document.getElementById(nearest_timestamp(messages, mark.start).id)).offset().top;
         var end_message = $(document.getElementById(nearest_timestamp(messages, 
-                                                                      mark.stop).id));
+                                                                      mark.end).id));
         var stop = end_message.offset().top + end_message[0].offsetHeight;
         
         draw_bracket(start, stop - start, mark.tags[0]);
@@ -188,7 +186,6 @@ function draw_marks(messages, marks) {
                                            .animate({scrollTop: start});
                                    });
         $(document.body).append(contextBar);
-        console.log((stop - start), doc_height, (((stop - start) / doc_height) * 100) +"%")
     })
 }
 
@@ -209,57 +206,56 @@ function smart_quote(text) {
                .replace(/(\s)'(\S|$)/g, "$1’$2");
 }
 
-function populate(text) {
-    var ul = $("<ul>").addClass("clearfix");
+function populate(meta) {
+    $.ajax(meta.text).then(function (text) {
+        var ul = $("<ul>").addClass("clearfix");
     
-    var last_stamp = null;
-    var last_group = null
+        var last_stamp = null;
+        var last_group = null
     
-    var messages = process_log (text);
+        var messages = process_log (text);
     
-    $.each(group_messages(messages), function (_, group) {
-        var li = $("<li>").addClass("messages clearfix");
-        var text = $("<div>");
-        var nick = group[0].nick;
+        $.each(group_messages(messages), function (_, group) {
+            var li = $("<li>").addClass("messages clearfix");
+            var text = $("<div>");
+            var nick = group[0].nick;
         
-        if (nick.match(/bot$/)) li.addClass("botspeak");
-        if (last_group && group[0].time - last_group[last_group.length - 1].time > DEAD_TIME) {
-          li.addClass("pause")
-        } 
+            if (nick.match(/bot$/)) li.addClass("botspeak");
+            if (last_group && group[0].time - last_group[last_group.length - 1].time > DEAD_TIME) {
+              li.addClass("pause")
+            } 
         
-        li.append($("<strong>").text(group[0].nick+" "));
-        li.append(text);
+            li.append($("<strong>").text(group[0].nick+" "));
+            li.append(text);
         
-        $.each(group, function (_, message) { 
+            $.each(group, function (_, message) { 
             
-            if (last_stamp == null || (message.time - last_stamp > (1000 * 60 * 5))) {
-                var timestamp = pad(message.time.getHours(), 2) + 
-                                ":" + 
-                                pad(message.time.getMinutes(), 2);
-                text.append($("<a class='timestamp'>")
-                                .attr({"id": timestamp,
-                                       "href": "#"+timestamp})
-                                .text(timestamp));
-                last_stamp = message.time;
-            }
+                if (last_stamp == null || (message.time - last_stamp > (1000 * 60 * 5))) {
+                    var timestamp = pad(message.time.getHours(), 2) + 
+                                    ":" + 
+                                    pad(message.time.getMinutes(), 2);
+                    text.append($("<a class='timestamp'>")
+                                    .attr({"id": timestamp,
+                                           "href": "#"+timestamp})
+                                    .text(timestamp));
+                    last_stamp = message.time;
+                }
             
-            text.append($("<span>").text(smart_quote(message.text))
-                                   .attr("id", message.id));
-            text.append($("<br/>"))
-        })
-        ul.append(li);
+                text.append($("<span>").text(smart_quote(message.text))
+                                       .attr("id", message.id));
+                text.append($("<br/>"))
+            })
+            ul.append(li);
         
-        last_group = group;
-    }) 
-    $("section.log-body").append(ul);
-    
-    
-    draw_marks(messages, marks);
-
+            last_group = group;
+        }) 
+        $("section.log-body").append(ul);    
+        draw_marks(messages, meta.marks);
+    }); 
 }
 
 function load_log(date, destination) {
-    $.ajax(location).then(populate);
+    $.ajax("/api" + location.pathname + "/meta").then(populate);
     $(".log-date").text(location.pathname.match(/\d{4}-\d\d?-\d\d?$/)[0]);    
 }
 
