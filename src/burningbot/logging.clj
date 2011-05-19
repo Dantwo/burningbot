@@ -4,8 +4,10 @@
             [clj-time.core :as t]
             [clj-time.format]
             [burningbot.settings :as settings]
-            [burningbot.db :as db])
-  (:use [clj-time.format :only [unparse]]))
+            [burningbot.db :as db]
+            [name.choi.joshua.fnparse :as parse])
+  (:use [clj-time.format :only [unparse]]
+        [name.choi.joshua.fnparse :only [conc lit alt]]))
 
 (defn obscure-email
   [^String message]
@@ -109,3 +111,140 @@
   (when (log-exists? channel date)
     {:channel channel
      :marks (db/query-logmarks-for-day channel date)}))
+
+;; handle log marking commands
+
+;; the following defines a simple parser using fnparse to process an
+;; incoming message for marking instructions and creating a
+;; appropriate log mark records
+
+(defn maybe-mark-command?
+  "returns true if the first word in the message is 'mark' after
+   discarding whitespace and ignoring case.
+
+   This is useful in particular to determine if the parser
+   should be run over the text."
+  [^String text]
+  (-> text .trim (.substring 0 5) (.toLowerCase) (= "mark ")))
+
+;; parsers
+
+(let [time-units {"s"       ::seconds
+                  "sec"     ::seconds
+                  "secs"    ::seconds
+                  "second"  ::seconds
+                  "seconds" ::seconds
+                  "m"       ::minutes
+                  "min"     ::minutes
+                  "mins"    ::minutes
+                  "minute"  ::minutes
+                  "minutes" ::minutes
+                  "h"       ::hours
+                  "hour"    ::hours
+                  "hours"   ::hours
+                  "day"     ::days
+                  "days"    ::days}]
+  (def parse-time-unit
+    (parse/semantics (parse/lit-alt-seq (keys time-units))
+                     time-units)))
+
+(def parse-integer
+  (parse/semantics (parse/re-term #"\d+")
+                   #(Integer/parseInt %)))
+
+(let [valid-nouns {"half"    1/2
+                   "third"   1/3
+                   "quarter" 1/4}]
+  (def parse-quantitative-noun
+    (parse/semantics
+     (parse/invisi-conc (parse/lit-alt-seq (keys valid-nouns))
+                        (opt (conc (opt (lit "of")) (lit "an"))))
+     valid-nouns)))
+
+(let [units {::seconds 1
+             ::minutes 60
+             ::hours   3600
+             ::day     86400}]
+  (defn factor-time
+    "given a value and a unit, returns a new time in the seconds clamped to a 1 second minimum"
+    [[ratio unit]]
+    (max 1 (* (or ratio 1) (units unit)))))
+
+(def parse-value-with-unit
+  (parse/semantics
+   (alt (conc parse-integer
+              parse-time-unit)
+        (conc (opt parse-quantitative-noun)
+              parse-time-unit))
+   factor-time))
+
+(def parse-relative-time-range
+  (alt (parse/semantics (conc (opt (lit "the")) (lit "last") 
+                              parse-value-with-unit)
+                        (fn [[_ _ t]] {:relative t}))
+       (parse/semantics (conc parse-value-with-unit
+                              (lit "ago"))
+                        (fn [[t _]] {:relative t}))))
+
+(def parse-moment
+  (parse/semantics (conc parse-integer (lit ":") parse-integer)
+                   (fn [[m _ s]] [m s])))
+
+(def parse-range
+  (parse/semantics
+   (conc parse-moment
+         (opt (parse/semantics
+               (conc (parse/lit-alt-seq ["to" "until" "till" "-"]) parse-moment)
+               second)))
+   (fn [range] {:absolute range})))
+
+(def parse-time
+  (alt parse-relative-time-range
+       parse-range))
+
+(defn group-tags
+  "takes a sequence of strings that are tags or commas and returns a seq of tags"
+  [tags]
+  (->> tags
+       (partition-by #{","})
+       (take-nth 2)
+       (map #(str/join " " %))))
+
+(def parse-tags
+  (parse/semantics (conc (parse/lit-alt-seq ["as" "with"])
+                         (rep+ anything))
+                   (comp group-tags second)))
+
+(defn transform-relative-time
+  [seconds reference-time]
+  {:start seconds :end reference-time})
+
+(defn transform-absolute-time
+  [[start end] reference-time]
+  {:start start :end end})
+
+(defn transform-time
+  "transform time takes a parse tree and a reference time and returns a new
+   record with :start and :end keys"
+  [time reference-time]
+  (cond (:relative time) (transform-relative-time (:relative time) reference-time)
+        (:absolute time) (transform-absolute-time (:absolute time) reference-time)))
+
+(defn run-mark-parser
+  "This function is the entry point into the parser. provided a string
+   of text it will return a mark record or nil.
+
+   run-mark-parser takes a time to use as a point to offset any relative
+   times against. This should be a joda time object."
+  [^String text reference-time]
+  (let [input (map first (re-seq #"([^\d,\s]+|\d+|,)" text))
+        state {:remainder input}
+        always-nil (constantly nil)]
+    (parse/rule-match (parse/semantics (conc (lit "mark")
+                                             parse-time
+                                             parse-tags)
+                                       (fn [[_ t tags]]
+                                         (assoc (transform-time t reference-time)
+                                           :tags  tags)))
+                      always-nil always-nil
+                      state)))
