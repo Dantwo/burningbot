@@ -195,3 +195,23 @@ article {
     margin-left: 70px;
     width: 520px;
 }
+
+.mark ul {
+    position: absolute;
+    display: block;
+    color: #666;
+    text-transform: lowercase;
+    letter-spacing: 0px;
+    font-size: 0.8em;
+    list-style: none;
+    padding: 0;
+}
+
+.mark ul li {
+    float: left;
+    border: none;
+}
+
+.mark ul li + li:before {
+    content: ', ';
+}

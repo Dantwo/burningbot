@@ -85,7 +85,7 @@ function group_messages(messages) {
 
 // marks
 
-function draw_bracket(top, height, tag) {
+function draw_bracket(top, height, tags) {
     if (!document.createElement('canvas').getContext) return;
     
     var canvas = document.createElement('canvas');
@@ -103,11 +103,11 @@ function draw_bracket(top, height, tag) {
     ctx.arc(10.5,height-6.5, 5, 0, Math.PI * 0.5, false);
     ctx.lineTo(7.5,height - 1.5)
 
-    ctx.strokeStyle = "#eee";
+    ctx.strokeStyle = "#EAE8DC";
     ctx.lineWidth = 6;
     ctx.stroke();
 
-    ctx.strokeStyle = "#666";
+    ctx.strokeStyle = "#878680";
     ctx.lineWidth = 2;
     ctx.stroke();
     
@@ -118,17 +118,15 @@ function draw_bracket(top, height, tag) {
                           top: top,
                           opacity: 0.75});
     mark.append(canvas);
-    mark.append($("<a>").text(tag)
-                        .addClass("tag")
-                        .css({"position": "absolute",
-                              "display": "block",
-                              "left":"25px",
-                              "top":"20px",
-                              "color": "#666",
-                              "text-transform": "lowercase",
-                              "letter-spacing": "0px",
-                              "font-size": "0.8em",
-                              "-webkit-transform":"rotate(" + ((Math.random() * 8) - 4) + "deg)"}))
+
+    var tags_list = $("<ul>").addClass("tags")
+                             .css({"left":"25px",
+                                   "top":"20px"})
+                             .appendTo(mark);
+
+    $(tags).each(function (_, tag) {
+        tags_list.append($("<li>")append($("<a>").text(tag)
+                                                 .addClass("tag")));});
                         
     $(".log-body").append(mark);
 }
@@ -170,7 +168,7 @@ function draw_marks(messages, marks) {
                                                                       mark.end).id));
         var stop = end_message.offset().top + end_message[0].offsetHeight;
         
-        draw_bracket(start, stop - start, mark.tags[0]);
+        draw_bracket(start, stop - start, mark.tags);
         
         var contextBar = $("<div>").addClass("markContext")
                                    .css({"position":"fixed",
