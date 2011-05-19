@@ -125,8 +125,9 @@ function draw_bracket(top, height, tags) {
                              .appendTo(mark);
 
     $(tags).each(function (_, tag) {
-        tags_list.append($("<li>")append($("<a>").text(tag)
-                                                 .addClass("tag")));});
+        tags_list.append($("<li>").append($("<a>").text(tag)
+                                                  .addClass("tag")));
+    });
                         
     $(".log-body").append(mark);
 }
