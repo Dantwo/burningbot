@@ -295,7 +295,14 @@
   "transform-relative-time takes a number of seconds and a joda time object to
    calculate the the new time relative to"
   [seconds reference-time span]
-  {:start seconds :end (when span reference-time)})
+  {:start (t/minus reference-time (t/secs seconds))
+   :end (when span reference-time)})
+
+(defn- hour-min-to-datetime
+  "takes an hour and min pair and reference time and returns a new time"
+  [[hour min] reference-time]
+  (t/date-time (t/year reference-time) (t/month reference-time) (t/day reference-time)
+               hour min))
 
 (defn transform-absolute-time
   "takes a time record from the parser and converts it into a joda time object
@@ -306,8 +313,8 @@
 
    If no end or duration is provided, nil is returned as :end."
   [[start {:keys [end duration]}] reference-time]
-  (let [start-time start
-        end-time   (cond end      end
+  (let [start-time (hour-min-to-datetime start reference-time)
+        end-time   (cond end      (hour-min-to-datetime end reference-time)
                          duration (transform-relative-time duration start-time true))]
     {:start start-time :end end-time}))
 
@@ -315,7 +322,6 @@
   "transform time takes a parse tree and a reference time and returns a new
    record with :start and :end keys"
   [time reference-time]
-  (prn ">" time)
   (cond (:relative time) (transform-relative-time (:relative time) reference-time (:span time))
         (:absolute time) (transform-absolute-time (:absolute time) reference-time)))
 
