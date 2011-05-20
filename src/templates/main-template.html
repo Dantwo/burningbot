@@ -164,7 +164,10 @@ function draw_marks(messages, marks) {
     var doc_height = $(document.body).height();
     
     $.each(marks, function (_, mark) {
+        if (!mark.end) return;
+        
         var start = $(document.getElementById(nearest_timestamp(messages, mark.start).id)).offset().top;
+        
         var end_message = $(document.getElementById(nearest_timestamp(messages, 
                                                                       mark.end).id));
         var stop = end_message.offset().top + end_message[0].offsetHeight;
