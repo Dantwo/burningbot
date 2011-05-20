@@ -150,7 +150,7 @@
                                                               (<= :start end-date))
                                                          (and (>= :end start-date)
                                                               (<= :end end-date)))
-                                                     (= :channel channel))))
+                                                     (= :channel (.toLowerCase channel)))))
                            (ql/join tag-refs (ql/where (and (= :content_id :logmarks.id)
                                                             (= :content_type (content-types ::logmarks)))))
                            (ql/join tags (ql/where (= :tag_ref.tag_id :tags.id)))
