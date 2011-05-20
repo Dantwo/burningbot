@@ -349,6 +349,10 @@
 
 ;; message handlers
 
+(defn sanitize-channel
+  [channel]
+  (.toLowerCase (if (.startsWith channel "#") (.substring channel 1) channel)))
+
 (defn handle-logmark
   "Attempts to handle incoming log marking requests. These log marks are viewable via
    on the web application."
@@ -356,7 +360,7 @@
   (when (maybe-mark-command? message)
     (if-let [mark (run-mark-parser message (t/now))]
       (do
-        (db/insert-logmark! (assoc mark :channel channel :author nick))
+        (db/insert-logmark! (assoc mark :channel (sanitize-channel channel) :author nick))
         "mark saved.")
       (str nick ": I'm confused."))))
 
