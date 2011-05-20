@@ -47,6 +47,7 @@
                       (first-of [phrasebook/handle-learn-phrase
                                  scraper/handle-tags
                                  ;;invitation/handle-invite
+                                 logging/handle-logmark
                                  sandwich]))
                      (ignore-address
                       (first-of [dice/handle-roll
