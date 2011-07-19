@@ -65,7 +65,6 @@
 
 (defn explode-6s
   [old-roll]
-  (prn "EXPLODE")
   (let [{:keys [dice rolled successes]} old-roll
         to-explode (count-where six? rolled)]
         (when (> to-explode 0)
