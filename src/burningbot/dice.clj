@@ -1,6 +1,10 @@
 (ns burningbot.dice
   (:require [clojure.string :as str]))
 
+(def ^{:doc "splits a sequence into two sequences based on a predicate"}
+  sieve
+  (juxt filter remove))
+
 ;; random functions
 
 (defn ^:private die [] (int (Math/ceil (* 6 (Math/random)))))
@@ -9,11 +13,19 @@
 
 ;; done with random. everything else should consume die-seq
 
-(defn count-success [break n] (>= n break))
+(defn success? [break n] (>= n break))
 
-(defn six? [n] (= n 6))
+(def six? (partial = 6))
 
 (def count-where (comp count filter))
+
+(def shade-bounds {"b" 4, "g" 3, "w" 2})
+
+(defn count-success
+  [shade rolled]
+  (->> rolled
+       (filter #(success? (shade-bounds shade) %))
+       count))
 
 (defn- explode-1
   [[dice die-seq]]
@@ -31,15 +43,52 @@
   ([dice] (roll dice (die-seq)))
   ([{:keys [shade exponent exploding?] :as dice} die-seq]
      (let [[rolled die-seq] (split-at (Math/min 20 exponent) die-seq)
-           rolled ((if exploding? #(explode % die-seq) identity) rolled)
-           successes (count-where (case shade
-                                        "b" (partial count-success 4)
-                                        "g" (partial count-success 3)
-                                        "w" (partial count-success 2))
-                                  rolled)]
+           rolled ((if exploding? #(explode % die-seq) identity) rolled)]
        {:dice dice
         :rolled rolled
-        :successes successes})))
+        :successes (count-success shade rolled)})))
+
+
+(defn reroll-traitor
+  [{:keys [rolled]
+    {:keys [shade] :as dice} :dice
+    :as old-roll}]
+  (let [[[_ & r :as traitors] successes] (sieve #(< % (shade-bounds shade))
+                                                rolled)]
+    (if (< 0 (count traitors))
+      (let [new-die (die)
+            rolled (concat [new-die] r successes)]
+        (assoc old-roll
+          :rolled rolled
+          :successes (count-success shade rolled)))
+      old-roll)))
+
+(defn explode-6s
+  [old-roll]
+  (prn "EXPLODE")
+  (let [{:keys [dice rolled successes]} old-roll
+        to-explode (count-where six? rolled)]
+        (when (> to-explode 0)
+          (let [new-result (roll {:exploding? true
+                                  :shade (:shade dice)
+                                  :exponent to-explode})
+                {new-successes :successes new-rolled :rolled} new-result]
+            
+                {:successes (+ successes new-successes)
+                 :rolled    (concat rolled new-rolled)
+                 :dice      (assoc dice :exploding? true)}))))
+
+(defn spend-fate
+  "spend-fate looks at a roll and either explodes 6s or rerolls one traitor
+   depending if there was an exploded roll previously."
+  [roll]
+  ((if (get-in roll [:dice :exploding?])
+      reroll-traitor
+      explode-6s)
+   roll))
+
+
+;; string mangling
 
 (def die-re #"([bgw])(\d+)(\*?)")
 (def ob-re  #"(ob)(\d+)")
@@ -82,6 +131,8 @@
                                                       "succeeded by ")
                                                     (Math/abs (- attacker defender)))))))
 
+;; tracking rolls and handling messages
+
 (def users-last-explodables (ref {}))
 
 (defn- save-roll
@@ -100,19 +151,8 @@
 
 (defn handle-explode
   [{:keys [nick pieces message]}]
-  (when (= "boom" (first pieces)) 
-    (when-let [{:keys [dice rolled successes obstacle]} (get @users-last-explodables nick nil)]
+  (when (#{"fate" "boom"} (first pieces)) 
+    (when-let [rolled (get @users-last-explodables nick nil)]
       (dosync (alter users-last-explodables dissoc nick))
-      (when (not (:exploded? dice))
-        (let [to-explode (count-where six? rolled)]
-          (when (> to-explode 0)
-            (let [new-result (roll {:exploding? true
-                                    :shade (:shade dice)
-                                    :exponent to-explode})
-                  {new-successes :successes new-rolled :rolled } new-result
-                  
-                  joined {:successes (+ successes new-successes)
-                          :rolled    (concat rolled new-rolled)
-                          :dice      (assoc dice :exploding? true)}]
 
-              (pack-result nick joined obstacle))))))))
+      (pack-result nick (spend-fate rolled) (:obstacle rolled)))))
