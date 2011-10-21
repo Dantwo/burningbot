@@ -31,6 +31,19 @@
   (cond (re-find #"sudo\s+(sandwich|sammich)" message) "one sandwich coming right up"
         (re-find #"sandwich|sammich" message) "make your own damn sandwich"))
 
+(defn retort
+  "makes a smart arse reply if the message ends in multiple question marks"
+  [{:keys [message nick]}]
+  (when (re-find #"\?\?$" message)
+    (str nick ":"
+         (rand-nth ["you're kidding right?"
+                    "i think you are coming unhinged"
+                    "what are you, crazy?? Of course not!"
+                    "unlikely"
+                    "sounds fishy to me"
+                    "definatetly not"
+                    "why would you even ask that?!"]))))
+
 
 (def ^{:doc "message-responder is the main pipeline of handlers for on-message calls.
              various handlers are combined with burningbot.plumbing; see that lib for details.
@@ -55,6 +68,7 @@
                                  phrasebook/handle-canned]))
                      (addressed-command
                       (constantly "failed my gibberish-wise test"))
+                     retort
                      scraper/handle-scrape]))))
 
 ;; irclj nuts and bolts
