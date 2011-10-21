@@ -35,7 +35,7 @@
   "makes a smart arse reply if the message ends in multiple question marks"
   [{:keys [message nick]}]
   (when (re-find #"\?\?$" message)
-    (str nick ":"
+    (str nick ": "
          (rand-nth ["you're kidding right?"
                     "i think you are coming unhinged"
                     "what are you, crazy?? Of course not!"
